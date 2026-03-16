@@ -1,0 +1,377 @@
+[
+  {
+    "id": 1767682819827,
+    "user_id": "hy61mgn9a",
+    "subject": "C",
+    "topic": "Introduction and Environment Setup",
+    "version": 1,
+    "videos": [
+      {
+        "title": "How To Setup A C Programming Environment On Windows",
+        "url": "https://www.youtube.com/watch?v=gq_ZXCuRhU4",
+        "description": "An overview of how to setup a C Programming Environment on Windows with Visual Studio. Check out ..."
+      },
+      {
+        "title": "#1: Getting Started with C Programming [2025] | C Programming for Beginners",
+        "url": "https://www.youtube.com/watch?v=KnvbUiSxvbM",
+        "description": "Step by step video tutorials to learn C Programming for absolute beginners! In this video, we will introduce you to the exciting ..."
+      },
+      {
+        "title": "C Programming Tutorial for Beginners",
+        "url": "https://www.youtube.com/watch?v=KJgsSFOSQv0",
+        "description": "This course will give you a full introduction into all of the core concepts in the C programming language. ❤️ Support for this ..."
+      }
+    ],
+    "created_at": "2026-01-06T07:00:19.827Z"
+  },
+  {
+    "id": 1767694530304,
+    "user_id": "0rnz2b7w6",
+    "subject": "c",
+    "topic": "Introduction to C",
+    "version": 1,
+    "videos": [
+      {
+        "title": "#1: Getting Started with C Programming [2025] | C Programming for Beginners",
+        "url": "https://www.youtube.com/watch?v=KnvbUiSxvbM",
+        "description": "Step by step video tutorials to learn C Programming for absolute beginners! In this video, we will introduce you to the exciting ..."
+      },
+      {
+        "title": "C Programming for Beginners | Full Course",
+        "url": "https://www.youtube.com/watch?v=ssJY5MDLjlo",
+        "description": "A full course on C programming for beginners. See the individual topic timestamps below as well as C programming environment ..."
+      },
+      {
+        "title": "C Programming Tutorial for Beginners",
+        "url": "https://www.youtube.com/watch?v=KJgsSFOSQv0",
+        "description": "This course will give you a full introduction into all of the core concepts in the C programming language. ❤️ Support for this ..."
+      }
+    ],
+    "created_at": "2026-01-06T10:15:30.304Z"
+  },
+  {
+    "id": 1767766343025,
+    "user_id": "fmnknlh3w",
+    "subject": "DBMS",
+    "topic": "What is a DBMS?",
+    "version": 1,
+    "videos": [
+      {
+        "title": "Introduction to Database Management Systems",
+        "url": "https://www.youtube.com/watch?v=6Iu45VZGQDk",
+        "description": "DBMS: Introduction Topics discussed: 1. Definitions/Terminologies. 2. DBMS definition & functionalities. 3. Properties of the ..."
+      },
+      {
+        "title": "Introduction To DBMS - Database Management System | What Is DBMS? | DBMS Explanation | Simplilearn",
+        "url": "https://www.youtube.com/watch?v=mqprM5YUdpk",
+        "description": "\"️  IBM - Data Analyst ..."
+      },
+      {
+        "title": "Introduction to Database Management Systems (DBMS)",
+        "url": "https://www.youtube.com/watch?v=OMwgGL3lHlI",
+        "description": "DBMS: Introduction to DBMS Topics discussed: 1. Introduction to the subject DBMS. 2. Analogy to understand the need for having ..."
+      }
+    ],
+    "created_at": "2026-01-07T06:12:23.025Z"
+  },
+  {
+    "id": 1769065309799,
+    "user_id": "tsc1pfnxc",
+    "subject": "Operating System",
+    "topic": "What is an Operating System?",
+    "version": 1,
+    "videos": [
+      {
+        "title": "What is an Operating System? Goals &amp; Functions of Operating System | Concept Simplified by Animation",
+        "url": "https://www.youtube.com/watch?v=ACsLvXuaKxw",
+        "description": "Hello Everyone. In this video we learn about what is an operating system? with simple explainations and examples. we will also ..."
+      },
+      {
+        "title": "Basics of OS (Computer System Operation)",
+        "url": "https://www.youtube.com/watch?v=VjPgYcQqqN0",
+        "description": "OS: Basics of Operating System (Computer System Operation) Topics Discussed: 1. Basics of OS. 2. The basic structure of a ..."
+      },
+      {
+        "title": "Introduction to Operating Systems",
+        "url": "https://www.youtube.com/watch?v=vBURTt97EkA",
+        "description": "OS: Introduction to Operating Systems Topics Discussed: 1. Introduction to Operating System (OS) 2. What is an Operating System ..."
+      }
+    ],
+    "created_at": "2026-01-22T07:01:49.799Z"
+  },
+  {
+    "id": 1769156682707,
+    "user_id": "9nrzmrjgu",
+    "subject": "c",
+    "topic": "Variables and Data Types",
+    "version": 1,
+    "videos": [
+      {
+        "title": "Variables &amp; Data Types In C: C Tutorial In Hindi #6",
+        "url": "https://www.youtube.com/watch?v=EcUGDTs4RyY",
+        "description": "In this video, I have explained about variables and data types in a C program and how C language variables and data types work ..."
+      },
+      {
+        "title": "Data Types in C Language | Primary &amp; Derived Data Type | C Programming Tutorials",
+        "url": "https://www.youtube.com/watch?v=DOjG1SyurrA",
+        "description": "Data Types in C Language | Primary & Derived Data Type | C Programming Tutorials In this Video Tutorial, we will begin learning ..."
+      },
+      {
+        "title": "C_10 Data Types in C - Part 1 | C Programming Tutorials for Beginners",
+        "url": "https://www.youtube.com/watch?v=NyT9vvSBoeo",
+        "description": "This video talks about different Data Types in C language. Best C Programming Tutorials ..."
+      }
+    ],
+    "created_at": "2026-01-23T08:24:42.707Z"
+  },
+  {
+    "id": 1769590805646,
+    "user_id": "9nrzmrjgu",
+    "subject": "c",
+    "topic": "Functions and Input/Output",
+    "version": 1,
+    "videos": [
+      {
+        "title": "Formatted and Unformatted Input-Output Functions in C Programming Language | Learners Region",
+        "url": "https://www.youtube.com/watch?v=t2mBYMdmlms",
+        "description": "In this video, we are going to discuss the formatted and unformatted Input-Output Functions in C Programming Language. I hope ..."
+      },
+      {
+        "title": "Input Output Functions in C | printf and scanf in C | Formatted and Unformatted IO Function in C",
+        "url": "https://www.youtube.com/watch?v=ZCXgm2MI_QQ",
+        "description": "Input Output Function in C | printf and scanf in C | Formatted and Unformatted IO Function in C Hello Everyone, ..."
+      },
+      {
+        "title": "7. Managing Input and Output Operations || C Programming.",
+        "url": "https://www.youtube.com/watch?v=DmPJ3Gixx00",
+        "description": "In this video we have discussed about managing input operations and output operations in C Programming. In order to cater to the ..."
+      }
+    ],
+    "created_at": "2026-01-28T09:00:05.646Z"
+  },
+  {
+    "id": 1769593643637,
+    "user_id": "9nrzmrjgu",
+    "subject": "c",
+    "topic": "Operators and Control Flow",
+    "version": 1,
+    "videos": [
+      {
+        "title": "Introduction to Control Flow in C-Programming | Hindi",
+        "url": "https://www.youtube.com/watch?v=Bv2dtc05xgU",
+        "description": "Hello Everyone, In this video I have explained why we use control flow in C-Programming. Relational Operators: ..."
+      },
+      {
+        "title": "Introduction to Control Flow in C",
+        "url": "https://www.youtube.com/watch?v=Le3kXqlKG0o",
+        "description": "Introduction to Control Flow in C."
+      },
+      {
+        "title": "C Programming - Chapter 3 - Control Flow",
+        "url": "https://www.youtube.com/watch?v=5YZd9lebqDo",
+        "description": "Chapter Two of C Programming by Brian W. Kernighan and Dennis M. Ritchie. In this chapter we cover control flow in C. For more ..."
+      }
+    ],
+    "created_at": "2026-01-28T09:47:23.637Z"
+  },
+  {
+    "id": 1772901006898,
+    "user_id": "9nrzmrjgu",
+    "subject": "c",
+    "topic": "Pointers and Memory Management",
+    "version": 1,
+    "videos": [
+      {
+        "title": "Pointers in C Explained | Dynamic Memory, Function Pointers &amp; More | C Programming Tutorial",
+        "url": "https://www.youtube.com/watch?v=Spo9IfLb1t0",
+        "description": "Pointers are one of the most powerful concepts in C programming! In this video, we'll break down pointers from the basics to ..."
+      },
+      {
+        "title": "C - Memory Management",
+        "url": "https://www.youtube.com/watch?v=734IQSAkww4",
+        "description": "C - Memory Management Watch More Videos at: https://www.tutorialspoint.com/videotutorials/index.htm Lecture By: Mr. Anadi ..."
+      },
+      {
+        "title": "Memory Layout of C Programs - Dynamic Memory Allocation : C Tutorial In Hindi #45",
+        "url": "https://www.youtube.com/watch?v=kmV55hPsSQE",
+        "description": "In this series of C programming tutorial videos, I have explained you everything you need to know about C language. I hope you ..."
+      }
+    ],
+    "created_at": "2026-03-07T16:30:06.898Z"
+  },
+  {
+    "id": 1772901755262,
+    "user_id": "9nrzmrjgu",
+    "subject": "c",
+    "topic": "Simple Programs",
+    "version": 1,
+    "videos": [
+      {
+        "title": "c programming | c language for beginners #tutorial programming | c programming for beginners",
+        "url": "https://www.youtube.com/watch?v=yle0_MA-_g0",
+        "description": ""
+      },
+      {
+        "title": "Introduction to C Language - Part-1 | C Language Tutorial",
+        "url": "https://www.youtube.com/watch?v=si-KFFOW2gw",
+        "description": "Introduction to C Programming - Part-1 | C Language Tutorial | C Srinivas Join Here For C Language Updates ..."
+      },
+      {
+        "title": "C_01 Introduction to C Language | C Programming Tutorials",
+        "url": "https://www.youtube.com/watch?v=EjavYOFoJJ0",
+        "description": "Jenny's Lectures Mastering DSA with Java course(New Batch): ..."
+      }
+    ],
+    "created_at": "2026-03-07T16:42:35.262Z"
+  },
+  {
+    "id": 1773149917241,
+    "user_id": "9nrzmrjgu",
+    "subject": "c",
+    "topic": "Arrays and Strings",
+    "version": 1,
+    "videos": [
+      {
+        "title": "Arrays and Strings in C Programming",
+        "url": "https://www.youtube.com/watch?v=0vzA1rm9CS8",
+        "description": "This video explains the basics of arrays and strings in C programming with appropriate examples. Let's get into the video to learn ..."
+      },
+      {
+        "title": "Array Basics | C Programming Tutorial",
+        "url": "https://www.youtube.com/watch?v=SqOphaInWOs",
+        "description": "An overview of the basics of using arrays in C. Source code: ..."
+      },
+      {
+        "title": "C Arrays | What is Array? full Explanation | Learn Coding",
+        "url": "https://www.youtube.com/watch?v=2AaL16bzCx0",
+        "description": "C Programming Series Schedule Update C Language videos will be uploaded every Monday, Wednesday, and Friday at 5 ..."
+      }
+    ],
+    "created_at": "2026-03-10T13:38:37.241Z"
+  },
+  {
+    "id": 1773150022043,
+    "user_id": "9nrzmrjgu",
+    "subject": "c",
+    "topic": "Optimization and Debugging",
+    "version": 1,
+    "videos": [
+      {
+        "title": "Loop Optimization Techniques | Code Optimization | Compiler Design",
+        "url": "https://www.youtube.com/watch?v=aYMAsAy_lAc",
+        "description": "LoopOptimizationTechniques code optimization || loop optimization || loop optimization in compiler design || loop optimization ..."
+      },
+      {
+        "title": "Compiler Design: Loop Optimization",
+        "url": "https://www.youtube.com/watch?v=Oa7yW0gxYfI",
+        "description": ""
+      },
+      {
+        "title": "Program Debugging in C/C++ | What is syntax, runtime and logical errors with example program",
+        "url": "https://www.youtube.com/watch?v=SgvW-RlLMW4",
+        "description": ""
+      }
+    ],
+    "created_at": "2026-03-10T13:40:22.043Z"
+  },
+  {
+    "id": 1773307495721,
+    "user_id": "qxrt1x3tb",
+    "subject": "eo",
+    "topic": "eo Terminology",
+    "version": 1,
+    "videos": [
+      {
+        "title": "Start for E Last foe E Word Meaning",
+        "url": "https://www.youtube.com/watch?v=HGtFkif_FQk",
+        "description": ""
+      },
+      {
+        "title": "one word substitution",
+        "url": "https://www.youtube.com/watch?v=4rlt9Z3hYjk",
+        "description": ""
+      },
+      {
+        "title": "E se word meaning || english spoken practice #english #spokenenglish #vocabulary",
+        "url": "https://www.youtube.com/watch?v=kIjKgf9RFyI",
+        "description": "E se word meaning || english spoken practice #english #spokenenglish #vocabulary Watch this video till the end and learn the ..."
+      }
+    ],
+    "created_at": "2026-03-12T09:24:55.721Z"
+  },
+  {
+    "id": 1773423170312,
+    "user_id": "pmxpfh8mg",
+    "subject": "clawdbot",
+    "topic": "What is Clawdbot?",
+    "version": 1,
+    "videos": [
+      {
+        "title": "5 insane ClawdBot uses cases you need to do immediately",
+        "url": "https://www.youtube.com/watch?v=b-l9sGh1-UY",
+        "description": "ClawdBot is a 24/7 AI agent employee and it is the most powerful technology I've ever used. Here's how to get the most out of it ..."
+      },
+      {
+        "title": "Clawdbot in Less Than 2 Minutes (FREE 24/7 HOSTING)",
+        "url": "https://www.youtube.com/watch?v=3DBpfB0ao50",
+        "description": "This is the fastest way to set up Clawdbot, the open-source AI agent that gives you full system access and connects to your favorite ..."
+      },
+      {
+        "title": "Clawdbot (moltbot) Clearly Explained...",
+        "url": "https://www.youtube.com/watch?v=9wmiXD04uE8",
+        "description": "Clawdbot is blowing up on X/Twitter. Here is my take on it. https://clawd.bot/ My voice to text App: whryte.com Website: ..."
+      }
+    ],
+    "created_at": "2026-03-13T17:32:50.312Z"
+  },
+  {
+    "id": 1773423555057,
+    "user_id": "pmxpfh8mg",
+    "subject": "clawdbot",
+    "topic": "Clawdbot Deployment Strategies",
+    "version": 1,
+    "videos": [
+      {
+        "title": "Watch this before you install Clawdbot!",
+        "url": "https://www.youtube.com/watch?v=Fh-9Y5Q4c20",
+        "description": "Timestamp 00:00 Intro to Clawdbot security issues 05:12 Clawdbot security tips - fixes How clawdbot's exposed instances are a ..."
+      },
+      {
+        "title": "This is the CHEAPEST and EASIEST way to set up ClawdBot",
+        "url": "https://www.youtube.com/watch?v=04wh2Hlgbds",
+        "description": "ClawdBot is a 24/7 AI agent employee and it is the most powerful technology I've ever used. Here's how it set it up cheap and ..."
+      },
+      {
+        "title": "OpenClaw Full Tutorial for Beginners: How to Setup Your First AI Agent (ClawdBot)",
+        "url": "https://www.youtube.com/watch?v=BoC5MY_7aDk",
+        "description": "In this video I walk you through a complete OpenClaw (ClawdBot) install from scratch — covering deployment on a dedicated ..."
+      }
+    ],
+    "created_at": "2026-03-13T17:39:15.057Z"
+  },
+  {
+    "id": 1773586082849,
+    "user_id": "1a13e598df0eb0f9518916a9",
+    "subject": "quantum computing",
+    "topic": "What is Quantum Computing?",
+    "version": 1,
+    "videos": [
+      {
+        "title": "Quantum Computing Explained by a Retired Microsoft Engineer",
+        "url": "https://www.youtube.com/watch?v=IzGJw6daRTw",
+        "description": "Dave Plummer explains the basics of Quantum Computing (superposition, entanglement, qubits, error correction, Grover's ..."
+      },
+      {
+        "title": "Quantum Computers Explained: How Quantum Computing Works",
+        "url": "https://www.youtube.com/watch?v=B3U1NDUiwSA",
+        "description": "Quantum computers use the principles of quantum mechanics to process information in ways that classical computers can't."
+      },
+      {
+        "title": "Quantum Computers, Explained With Quantum Physics",
+        "url": "https://www.youtube.com/watch?v=jHoEjvuPoB8",
+        "description": "Quantum computers aren't the next generation of supercomputers—they're something else entirely. Before we can even begin to ..."
+      }
+    ],
+    "created_at": "2026-03-15T14:48:02.849Z"
+  }
+]

@@ -1,0 +1,13 @@
+fastapi
+uvicorn[standard]
+sqlalchemy
+asyncpg
+pydantic
+python-dotenv
+Authlib
+httpx
+openai
+qiskit
+qiskit-aer
+qiskit-optimization
+qiskit-algorithms

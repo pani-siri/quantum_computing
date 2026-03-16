@@ -1,0 +1,41 @@
+# Dependencies
+node_modules/
+.venv/
+
+# Build output
+dist/
+dist-ssr/
+
+# Environment files
+*.local
+.env
+
+# Logs
+logs/
+*.log
+npm-debug.log*
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Editor directories
+.vscode/*
+!.vscode/extensions.json
+.idea/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+
+# Secrets / tokens
+app/server/gmail_tokens.json
+
+# Misc
+*.local
