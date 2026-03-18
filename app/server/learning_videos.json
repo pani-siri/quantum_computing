@@ -423,5 +423,30 @@
       }
     ],
     "created_at": "2026-03-18T18:37:24.964Z"
+  },
+  {
+    "id": 1773860995337,
+    "user_id": "1a13e598df0eb0f9518916a9",
+    "subject": "gym",
+    "topic": "Warmup Routines",
+    "version": 1,
+    "videos": [
+      {
+        "title": "WARM UP ROUTINE BEFORE WORKOUT | Quick and Effective | Rowan Row",
+        "url": "https://www.youtube.com/watch?v=VecbXgWY0DI",
+        "description": "WARM UP ROUTINE BEFORE WORKOUT | Quick and Effective | Rowan Row Hey guys, I have put together this quick and ..."
+      },
+      {
+        "title": "5 Mins Warm up | Do this before every workout | | Biglee Tamil",
+        "url": "https://www.youtube.com/watch?v=8rcLQeXJvGg",
+        "description": "What is warm up? why warm up? Warm up exercises for upper body and shoulders!!! Warm up for lower body ( hips and knee)!!!"
+      },
+      {
+        "title": "5-minute PRE-WORKOUT WARM UP for Injury Prevention",
+        "url": "https://www.youtube.com/watch?v=OcPs3x1vX1A",
+        "description": "If you want to have your best strength workout, a proper warm-up should always be included! I've got a quick full-body warm-up ..."
+      }
+    ],
+    "created_at": "2026-03-18T19:09:55.337Z"
   }
 ]

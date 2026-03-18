@@ -1,11 +1,10 @@
 
 import React, { useState, useEffect, useRef } from 'react';
-import { SubTopic, MasteryState, ChatMessage, LearningAgent, AcademicBundle, CognitiveLoadState, SolvedExample, MaterialItem, VideoItem, QuizItem, FlashcardItem, PracticeQuestion } from '../types';
+import { SubTopic, MasteryState, ChatMessage, LearningAgent, AcademicBundle, CognitiveLoadState, QuizItem } from '../types';
 import { fastapiService } from '../services/fastapiService';
 import { BehavioralMetrics } from '../services/quantumSimulator';
-import { extractNotesFeatures, extractPracticeFeatures, extractQuizFeatures, extractVideoFeatures } from '../services/qsvmFeatureExtractor';
-import { ExternalLink, Youtube, FileText, BookOpen, PenTool, ClipboardCheck, ChevronDown, ChevronUp, Library, GraduationCap, CheckCircle2, HelpCircle, FileSearch, LibraryBig, Book, Layers, Download, Sparkles, Settings2, Eye, EyeOff } from 'lucide-react';
-import ModuleFlashcard from './ModuleFlashcard';
+import { extractNotesFeatures, extractQuizFeatures, extractVideoFeatures } from '../services/qsvmFeatureExtractor';
+import { ExternalLink, Youtube, FileText, BookOpen, GraduationCap, CheckCircle2, FileSearch, LibraryBig, Sparkles } from 'lucide-react';
 
 interface StudySessionProps {
   subtopic: SubTopic;
@@ -16,7 +15,7 @@ interface StudySessionProps {
 }
 
 const StudySession: React.FC<StudySessionProps> = ({ subtopic, agent, onComplete, onExit, onUpdateChat }) => {
-  const [activeTab, setActiveTab] = useState<'video' | 'notes' | 'materials' | 'practice' | 'flashcards' | 'quiz' | 'chat'>('video');
+  const [activeTab, setActiveTab] = useState<'video' | 'notes' | 'materials' | 'quiz' | 'chat'>('video');
   const [timeSpent, setTimeSpent] = useState(0);
   const [focusTime, setFocusTime] = useState(0);
   const [distractions, setDistractions] = useState(0);
@@ -37,15 +36,6 @@ const StudySession: React.FC<StudySessionProps> = ({ subtopic, agent, onComplete
   const [quizFinished, setQuizFinished] = useState(false);
   const [showAnswer, setShowAnswer] = useState(false);
 
-  // Flashcard State
-  const [flashcardsStarted, setFlashcardsStarted] = useState(false);
-  const [userDesiredFlashcards, setUserDesiredFlashcards] = useState(5);
-  const [activeFlashcardSet, setActiveFlashcardSet] = useState<FlashcardItem[]>([]);
-  const [currentFlashIndex, setCurrentFlashIndex] = useState(0);
-  
-  const [expandedSolved, setExpandedSolved] = useState<number | null>(null);
-  const [showPracticeAnswers, setShowPracticeAnswers] = useState<Record<number, boolean>>({});
-
   const [isRegenerating, setIsRegenerating] = useState(false);
   const regenCooldownRef = useRef<Record<string, number>>({});
   const quizWrongStreakRef = useRef(0);
@@ -56,8 +46,6 @@ const StudySession: React.FC<StudySessionProps> = ({ subtopic, agent, onComplete
   const activeNotesSectionRef = useRef<number>(0);
   const notesSectionSecondsRef = useRef<Record<number, number>>({});
   const notesSectionScrollEventsRef = useRef<Record<number, number>>({});
-  const practiceRevealCountsRef = useRef<Record<number, number>>({});
-  const practiceQuestionStartAtRef = useRef<Record<number, number>>({});
 
   const quizQuestionStartAtRef = useRef<number>(Date.now());
   const quizRetriesRef = useRef<number>(0);
@@ -119,27 +107,6 @@ const StudySession: React.FC<StudySessionProps> = ({ subtopic, agent, onComplete
         contextChunks.push(`NOTES:\n${bundle.notes}`);
       }
 
-      if (bundle?.solved_examples && bundle.solved_examples.length > 0) {
-        const solvedText = bundle.solved_examples
-          .map((ex, idx) => `Example ${idx + 1}: ${ex.problem}\nSolution: ${ex.solution}\nSteps: ${ex.steps.join(' -> ')}`)
-          .join('\n\n');
-        contextChunks.push(`SOLVED EXAMPLES:\n${solvedText}`);
-      }
-
-      if (bundle?.practice_questions && bundle.practice_questions.length > 0) {
-        const practiceText = bundle.practice_questions
-          .map((q, idx) => `Practice ${idx + 1}: ${typeof q === 'string' ? q : q.question}\nAnswer: ${typeof q === 'string' ? '' : q.answer}`)
-          .join('\n\n');
-        contextChunks.push(`PRACTICE QUESTIONS:\n${practiceText}`);
-      }
-
-      if (bundle?.flashcards && bundle.flashcards.length > 0) {
-        const flashText = bundle.flashcards
-          .map((fc, idx) => `Card ${idx + 1}: Q: ${fc.front}\nA: ${fc.back}`)
-          .join('\n\n');
-        contextChunks.push(`FLASHCARDS:\n${flashText}`);
-      }
-
       const context = contextChunks.join('\n\n');
 
       const response = await fastapiService.getAgentResponse(
@@ -172,15 +139,6 @@ const StudySession: React.FC<StudySessionProps> = ({ subtopic, agent, onComplete
     quizRetriesRef.current = 0;
   };
 
-  const handleStartFlashcards = () => {
-    if (!bundle?.flashcards) return;
-    const shuffled = [...bundle.flashcards].sort(() => 0.5 - Math.random());
-    const sliced = shuffled.slice(0, Math.min(userDesiredFlashcards, bundle.flashcards.length));
-    setActiveFlashcardSet(sliced);
-    setFlashcardsStarted(true);
-    setCurrentFlashIndex(0);
-  };
-
   const isCooldownActive = (key: string, ms: number) => {
     const last = regenCooldownRef.current[key] || 0;
     return Date.now() - last < ms;
@@ -191,7 +149,7 @@ const StudySession: React.FC<StudySessionProps> = ({ subtopic, agent, onComplete
   };
 
   const simplifyResource = async (args: {
-    resourceType: 'notes_snippet' | 'video_item' | 'practice_question' | 'quiz_item';
+    resourceType: 'notes_snippet' | 'video_item' | 'quiz_item';
     index?: number;
     current?: any;
     cooldownKey: string;
@@ -241,14 +199,6 @@ const StudySession: React.FC<StudySessionProps> = ({ subtopic, agent, onComplete
             updated[args.index] = res.resource.snippet;
             notesSectionsRef.current = updated;
             next.notes = updated.join('\n\n');
-          }
-        }
-
-        if (args.resourceType === 'practice_question' && typeof args.index === 'number') {
-          const list = Array.isArray(next.practice_questions) ? [...next.practice_questions] : [];
-          if (list[args.index] && res.resource?.question) {
-            list[args.index] = { question: res.resource.question, answer: res.resource.answer };
-            next.practice_questions = list;
           }
         }
 
@@ -318,40 +268,6 @@ const StudySession: React.FC<StudySessionProps> = ({ subtopic, agent, onComplete
     return url;
   };
 
-  const togglePracticeAnswer = (idx: number) => {
-    setShowPracticeAnswers(prev => {
-      const nextValue = !prev[idx];
-      const next = { ...prev, [idx]: nextValue };
-
-      if (nextValue) {
-        if (!practiceQuestionStartAtRef.current[idx]) practiceQuestionStartAtRef.current[idx] = Date.now();
-        const count = (practiceRevealCountsRef.current[idx] || 0) + 1;
-        practiceRevealCountsRef.current[idx] = count;
-
-        const startedAt = practiceQuestionStartAtRef.current[idx] || Date.now();
-        const responseTimeSec = Math.max(1, Math.round((Date.now() - startedAt) / 1000));
-        const metrics: BehavioralMetrics = extractPracticeFeatures({
-          response_time_sec: responseTimeSec,
-          reveal_count: count,
-          max_expected_reveals: 4
-        });
-        if (!isCooldownActive(`practice_auto_${idx}`, 45_000)) {
-          markCooldown(`practice_auto_${idx}`);
-          simplifyResource({
-            resourceType: 'practice_question',
-            index: idx,
-            current: bundle?.practice_questions?.[idx],
-            cooldownKey: `practice_auto_${idx}`,
-            metrics
-          });
-          practiceRevealCountsRef.current[idx] = 0;
-          practiceQuestionStartAtRef.current[idx] = Date.now();
-        }
-      }
-
-      return next;
-    });
-  };
 
   useEffect(() => {
     if (!quizStarted) return;
@@ -624,161 +540,12 @@ const StudySession: React.FC<StudySessionProps> = ({ subtopic, agent, onComplete
               </div>
               <div className="p-10 bg-gradient-to-r from-indigo-50 to-violet-50 border border-indigo-100/50 rounded-[3rem] flex items-center gap-8 shadow-inner relative overflow-hidden group">
                 <div className="absolute inset-0 bg-white/40 group-hover:bg-white/20 transition-colors duration-500 pointer-events-none" />
-                <div className="w-16 h-16 bg-gradient-to-br from-indigo-500 to-violet-600 text-white rounded-[2rem] flex items-center justify-center shrink-0 shadow-lg relative z-10"><Book size={28}/></div>
+                <div className="w-16 h-16 bg-gradient-to-br from-indigo-500 to-violet-600 text-white rounded-[2rem] flex items-center justify-center shrink-0 shadow-lg relative z-10"><BookOpen size={28}/></div>
                 <div className="relative z-10">
                    <p className="text-xl font-black text-indigo-950 mb-1">Digital Library Active</p>
                    <p className="text-sm font-bold text-indigo-800/70 leading-relaxed max-w-3xl">These resources are curated from open-source educational repositories (OER) specifically cross-referenced for <span className="text-indigo-600">"{subtopic.title}"</span>.</p>
                 </div>
               </div>
-            </div>
-          )}
-
-          {activeTab === 'practice' && (
-            <div className="max-w-4xl mx-auto space-y-16 pb-24 animate-in fade-in duration-500">
-               <div className="border-b pb-8 flex justify-between items-end">
-                  <div>
-                    <h3 className="text-4xl font-black italic tracking-tighter">Practice Lab</h3>
-                    <p className="text-slate-500 font-medium mt-1">Bridging theory and application through logical exercises.</p>
-                  </div>
-                  <div className="p-3 bg-emerald-50 rounded-2xl text-emerald-600"><Layers size={28} /></div>
-               </div>
-
-               <div className="space-y-8">
-                  <h4 className="text-xs font-black uppercase tracking-widest text-slate-400 flex items-center gap-2">
-                    <CheckCircle2 size={16} className="text-emerald-500" /> Solved Logic Walkthroughs
-                  </h4>
-                  <div className="space-y-6">
-                    {bundle?.solved_examples?.map((ex, i) => (
-                      <div key={i} className="bg-white border-2 border-slate-100 rounded-[3.5rem] overflow-hidden shadow-sm transition-all hover:shadow-xl">
-                        <button 
-                          onClick={() => setExpandedSolved(expandedSolved === i ? null : i)}
-                          className="w-full p-10 text-left flex justify-between items-center hover:bg-slate-50 transition-all"
-                        >
-                          <span className="font-black text-2xl tracking-tight text-slate-900 pr-10">{ex.problem}</span>
-                          <div className={`w-12 h-12 rounded-full border-2 flex items-center justify-center transition-all ${expandedSolved === i ? 'bg-indigo-600 border-indigo-600 text-white rotate-180' : 'bg-white border-slate-100 text-slate-400'}`}> 
-                             <ChevronDown size={24}/>
-                          </div>
-                        </button>
-                        {expandedSolved === i && (
-                          <div className="p-12 bg-slate-50 border-t border-slate-100 space-y-10 animate-in slide-in-from-top-6 duration-300">
-                            <div className="space-y-8 relative before:absolute before:inset-y-0 before:left-4 before:w-0.5 before:bg-indigo-100">
-                              <p className="text-[11px] font-black uppercase text-indigo-500 tracking-widest ml-10">Logical Steps:</p>
-                              {ex.steps.map((step, sIdx) => (
-                                <div key={sIdx} className="flex gap-6 relative z-10">
-                                  <div className="w-8 h-8 rounded-full bg-white flex items-center justify-center shrink-0 text-xs font-black text-indigo-600 border-2 border-indigo-100 shadow-sm">
-                                    {sIdx + 1}
-                                  </div>
-                                  <p className="text-base font-bold text-slate-700 pt-1 leading-relaxed">{step}</p>
-                                </div>
-                              ))}
-                            </div>
-                            <div className="p-8 bg-emerald-50 border-2 border-emerald-100 rounded-[2rem] shadow-sm">
-                              <p className="text-[11px] font-black uppercase text-emerald-600 mb-2 tracking-widest">Mastery Result:</p>
-                              <p className="text-xl font-black text-slate-900 italic">"{ex.solution}"</p>
-                            </div>
-                          </div>
-                        )}
-                      </div>
-                    ))}
-                  </div>
-               </div>
-
-               <div className="space-y-8">
-                  <h4 className="text-xs font-black uppercase tracking-widest text-slate-400 flex items-center gap-2">
-                    <HelpCircle size={16} className="text-indigo-500" /> Independent Challenges
-                  </h4>
-                  <div className="grid grid-cols-1 gap-6">
-                    {bundle?.practice_questions?.map((q, i) => (
-                      <div key={i} className="p-10 bg-slate-50 border-2 border-white shadow-xl rounded-[2.5rem] flex flex-col gap-6 hover:scale-[1.01] transition-transform overflow-hidden">
-                         <div className="flex gap-8 items-start">
-                           <div className="w-12 h-12 rounded-2xl bg-slate-900 text-white flex items-center justify-center font-black shrink-0 shadow-lg text-lg">
-                             {i + 1}
-                           </div>
-                           <div className="flex-1 space-y-4 pt-2">
-                             <p className="text-xl font-black text-slate-800 leading-snug italic">{typeof q === 'string' ? q : q.question}</p>
-                             <button 
-                               onClick={() => togglePracticeAnswer(i)}
-                               className="flex items-center gap-2 px-6 py-3 bg-white border-2 border-slate-100 rounded-2xl text-[10px] font-black uppercase tracking-widest text-indigo-600 hover:border-indigo-600 transition-all shadow-sm"
-                             >
-                               {showPracticeAnswers[i] ? <EyeOff size={14}/> : <Eye size={14}/>}
-                               {showPracticeAnswers[i] ? 'Hide Answers' : 'Answers'}
-                             </button>
-                           </div>
-                         </div>
-                         {showPracticeAnswers[i] && typeof q !== 'string' && (
-                           <div className="p-8 bg-indigo-50 border border-indigo-100 rounded-[2rem] animate-in slide-in-from-top-4 duration-300">
-                              <p className="text-[9px] font-black text-indigo-500 uppercase tracking-widest mb-2">Solution Insight:</p>
-                              <p className="font-bold text-indigo-900 leading-relaxed whitespace-pre-wrap">{q.answer}</p>
-                           </div>
-                         )}
-                      </div>
-                    ))}
-                  </div>
-               </div>
-            </div>
-          )}
-
-          {activeTab === 'flashcards' && (
-            <div className="max-w-xl mx-auto h-full flex flex-col justify-center animate-in zoom-in-95 duration-500">
-               {bundle?.flashcards && (
-                 <>
-                   {!flashcardsStarted ? (
-                     <div className="space-y-12 animate-in zoom-in-95 duration-500 text-center">
-                       <div className="w-24 h-24 bg-indigo-50 rounded-[2.5rem] flex items-center justify-center mx-auto text-indigo-600 shadow-inner">
-                         <Settings2 size={48} />
-                       </div>
-                       <div>
-                         <h3 className="text-4xl font-black tracking-tighter">Personalized Recall</h3>
-                         <p className="text-slate-500 font-medium mt-2">Choose the number of flashcards for your focus session.</p>
-                       </div>
-                       
-                       <div className="bg-slate-50 p-10 rounded-[3rem] border-2 border-slate-100 space-y-8">
-                         <div className="flex flex-col items-center">
-                           <label className="text-[10px] font-black uppercase text-slate-400 tracking-widest mb-4">Select Card Count</label>
-                           <div className="flex items-center gap-6">
-                             <button 
-                               onClick={() => setUserDesiredFlashcards(Math.max(1, userDesiredFlashcards - 1))}
-                               className="w-12 h-12 bg-white border-2 border-slate-100 rounded-2xl flex items-center justify-center font-black text-xl hover:bg-slate-50 active:scale-90 transition-all shadow-sm"
-                             >-</button>
-                             <div className="flex flex-col items-center">
-                               <span className="text-6xl font-black italic text-indigo-600 w-24 text-center">{userDesiredFlashcards}</span>
-                               <span className="text-[9px] font-black uppercase text-slate-400 tracking-widest">Cards</span>
-                             </div>
-                             <button 
-                               onClick={() => setUserDesiredFlashcards(Math.min(bundle.flashcards.length, userDesiredFlashcards + 1))}
-                               className="w-12 h-12 bg-white border-2 border-slate-100 rounded-2xl flex items-center justify-center font-black text-xl hover:bg-slate-50 active:scale-90 transition-all shadow-sm"
-                             >+</button>
-                           </div>
-                           <p className="text-[10px] font-bold text-slate-400 mt-6 uppercase tracking-widest">Available from Pool: {bundle.flashcards.length}</p>
-                         </div>
-                       </div>
-
-                       <button 
-                         onClick={handleStartFlashcards}
-                         className="w-full py-7 bg-indigo-600 text-white rounded-[2.5rem] font-black uppercase tracking-widest shadow-2xl hover:bg-indigo-700 active:scale-95 transition-all"
-                       >
-                         Start Neural Recall
-                       </button>
-                     </div>
-                   ) : (
-                    <div className="space-y-12">
-                      <div className="text-center">
-                        <h3 className="text-3xl font-black mb-2 italic">Neural Recall</h3>
-                        <p className="text-slate-500 font-medium">Verify your long-term memory of core concepts.</p>
-                      </div>
-                      <ModuleFlashcard 
-                        question={activeFlashcardSet[currentFlashIndex]?.front || ''} 
-                        answer={activeFlashcardSet[currentFlashIndex]?.back || ''} 
-                      />
-                      <div className="flex justify-between items-center px-10">
-                        <button disabled={currentFlashIndex === 0} onClick={() => setCurrentFlashIndex(prev => prev - 1)} className="text-[11px] font-black uppercase tracking-widest text-slate-400 disabled:opacity-30">← Prev</button>
-                        <span className="text-[10px] font-black uppercase tracking-widest text-indigo-600">Card {currentFlashIndex + 1} / {activeFlashcardSet.length}</span>
-                        <button disabled={currentFlashIndex === activeFlashcardSet.length - 1} onClick={() => setCurrentFlashIndex(prev => prev + 1)} className="text-[11px] font-black uppercase tracking-widest text-slate-400 disabled:opacity-30">Next →</button>
-                      </div>
-                    </div>
-                   )}
-                 </>
-               )}
             </div>
           )}
 
@@ -789,7 +556,7 @@ const StudySession: React.FC<StudySessionProps> = ({ subtopic, agent, onComplete
                    {!quizStarted ? (
                      <div className="space-y-12 animate-in zoom-in-95 duration-500 text-center">
                        <div className="w-24 h-24 bg-indigo-50 rounded-[2.5rem] flex items-center justify-center mx-auto text-indigo-600 shadow-inner">
-                         <Settings2 size={48} />
+                         <Sparkles size={48} />
                        </div>
                        <div>
                          <h3 className="text-4xl font-black tracking-tighter">Personalized Assessment</h3>

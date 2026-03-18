@@ -64,10 +64,7 @@ router.post("/api/ai/resource", async (req, res) => {
       notes: { schema: '{"notes": string}', prompt: `Regenerate ONLY the NOTES for topic: "${subtopicTitle}" in subject "${subject}".\n\n${adapt}\nExisting: ${typeof current === "string" ? clipText(current, 1200) : ""}\nExtra: ${extraContext}\nReturn ONLY valid JSON {"notes": string}. Plain text only.` },
       notes_snippet: { schema: '{"snippet": string}', prompt: `Rewrite this NOTES SNIPPET to be more understandable.\nTOPIC: "${subtopicTitle}" in "${subject}"\n${adapt}\nSNIPPET: ${clipText(String(current?.snippet || current || ""), 1800)}\nExtra: ${extraContext}\nReturn ONLY valid JSON {"snippet": string}.` },
       video_item: { schema: '{"title","url","description"}', prompt: `Suggest ONE alternative YouTube video for: "${subtopicTitle}" in "${subject}".\n${adapt}\nCurrent: ${clipText(String(current?.title || ""), 200)}\nExtra: ${extraContext}\nReturn JSON {"title": string, "url": string, "description": string}. URL must be https://www.youtube.com/...` },
-      practice_question: { schema: '{"question","answer"}', prompt: `Regenerate ONE PRACTICE QUESTION for: "${subtopicTitle}" in "${subject}".\n${adapt}\nExisting Q: ${clipText(String(current?.question || ""), 600)}\nExtra: ${extraContext}\nReturn JSON {"question": string, "answer": string}. Answer must include OBJECTIVE:, LOGIC:, FINAL ANSWER:.` },
-      solved_example: { schema: '{"problem","solution","steps"}', prompt: `Regenerate ONE SOLVED EXAMPLE for: "${subtopicTitle}" in "${subject}".\n${adapt}\nExisting: ${clipText(String(current?.problem || ""), 600)}\nExtra: ${extraContext}\nReturn JSON {"problem": string, "solution": string, "steps": string[]}.` },
-      quiz_item: { schema: '{"question","options","answer","explanation"}', prompt: `Regenerate ONE QUIZ ITEM for: "${subtopicTitle}" in "${subject}".\n${adapt}\nExisting Q: ${clipText(String(current?.question || ""), 600)}\nIndex: ${index}\nExtra: ${extraContext}\nReturn JSON {"question": string, "options": string[4], "answer": string, "explanation": string}.` },
-      flashcard: { schema: '{"front","back"}', prompt: `Regenerate ONE FLASHCARD for: "${subtopicTitle}" in "${subject}".\n${adapt}\nExisting: ${clipText(String(current?.front || ""), 400)}\nExtra: ${extraContext}\nReturn JSON {"front": string, "back": string}.` }
+      quiz_item: { schema: '{"question","options","answer","explanation"}', prompt: `Regenerate ONE QUIZ ITEM for: "${subtopicTitle}" in "${subject}".\n${adapt}\nExisting Q: ${clipText(String(current?.question || ""), 600)}\nIndex: ${index}\nExtra: ${extraContext}\nReturn JSON {"question": string, "options": string[4], "answer": string, "explanation": string}.` }
     };
 
     if (!prompts[resourceType]) return res.status(400).json({ error: "Unsupported resourceType" });
@@ -133,7 +130,7 @@ router.post("/api/ai/content", async (req, res) => {
     const llmOpts = { response_format: "json_object", num_predict: 2500, timeout: 90000 };
 
     // Assemble the bundle from sequential smaller LLM calls (Ollama processes one at a time)
-    const bundle = { notes: "", videos: [], materials: [], solved_examples: [], practice_questions: [], quiz: [], flashcards: [] };
+    const bundle = { notes: "", videos: [], materials: [], quiz: [] };
 
     // Helper: call LLM and parse, return null on failure
     async function genPart(label, userPrompt) {
@@ -159,17 +156,6 @@ router.post("/api/ai/content", async (req, res) => {
     const quizData = await genPart("quiz",
       `Create 5 MCQs for "${subtopicTitle}" in "${subject}". ${adapt}\nReturn JSON: {"quiz": [{"question":"...","options":["A","B","C","D"],"answer":"...","explanation":"..."}]}`);
     if (Array.isArray(quizData?.quiz)) bundle.quiz = quizData.quiz;
-
-    // 3. Practice + solved examples
-    const practiceData = await genPart("practice",
-      `For "${subtopicTitle}" in "${subject}": ${adapt}\nCreate 2 solved examples and 2 practice questions.\nReturn JSON: {"solved_examples":[{"problem":"...","solution":"...","steps":["..."]}],"practice_questions":[{"question":"...","answer":"..."}]}`);
-    if (Array.isArray(practiceData?.solved_examples)) bundle.solved_examples = practiceData.solved_examples;
-    if (Array.isArray(practiceData?.practice_questions)) bundle.practice_questions = practiceData.practice_questions;
-
-    // 4. Flashcards
-    const flashData = await genPart("flashcards",
-      `Create 5 flashcards for "${subtopicTitle}" in "${subject}". ${adapt}\nReturn JSON: {"flashcards":[{"front":"...","back":"..."}]}`);
-    if (Array.isArray(flashData?.flashcards)) bundle.flashcards = flashData.flashcards;
 
     // Generate materials programmatically (no LLM needed)
     const searchQ = encodeURIComponent(`${subtopicTitle} ${subject}`);
