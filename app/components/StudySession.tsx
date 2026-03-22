@@ -37,6 +37,7 @@ const StudySession: React.FC<StudySessionProps> = ({ subtopic, agent, onComplete
   const [showAnswer, setShowAnswer] = useState(false);
 
   const [isFinalizing, setIsFinalizing] = useState(false);
+  const [isFinalized, setIsFinalized] = useState(false);
   const [isRegenerating, setIsRegenerating] = useState(false);
   const regenCooldownRef = useRef<Record<string, number>>({});
   const quizWrongStreakRef = useRef(0);
@@ -240,7 +241,7 @@ const StudySession: React.FC<StudySessionProps> = ({ subtopic, agent, onComplete
   };
 
   const finalizeSession = async () => {
-    if (isFinalizing) return;
+    if (isFinalizing || isFinalized) return;
     setIsFinalizing(true);
 
     const attempts = activeQuizSet.length || 1;
@@ -263,6 +264,7 @@ const StudySession: React.FC<StudySessionProps> = ({ subtopic, agent, onComplete
     }
 
     const quizScorePercent = activeQuizSet.length > 0 ? Math.round((quizScore / activeQuizSet.length) * 100) : undefined;
+    setIsFinalized(true);
     onComplete({ focusTime, distractions, bundle: bundle!, loadState, quizScore: quizScorePercent, wrongAnswers: quizWrongAnswersRef.current.length > 0 ? quizWrongAnswersRef.current : undefined });
   };
 
@@ -597,15 +599,15 @@ const StudySession: React.FC<StudySessionProps> = ({ subtopic, agent, onComplete
                      </div>
                    ) : (
                     <div className="space-y-10">
-                      <div className="p-8 md:p-12 border border-slate-200 rounded-[2.5rem] bg-white shadow-lg relative">
-                        <div className="absolute -top-4 left-8 px-5 py-1.5 bg-slate-900 text-white text-[10px] font-black uppercase rounded-full tracking-widest">
+                      <div className="p-8 md:p-12 border-2 border-slate-200 rounded-[2.5rem] bg-white shadow-xl relative">
+                        <div className="absolute -top-4 left-8 px-5 py-1.5 bg-slate-900 text-white text-[10px] font-black uppercase rounded-full tracking-widest shadow-md">
                           Question {currentQuizIndex + 1} / {activeQuizSet.length}
                         </div>
                         {/* Progress bar */}
-                        <div className="w-full bg-slate-100 h-1 rounded-full mb-8 mt-2 overflow-hidden">
+                        <div className="w-full bg-slate-100 h-1.5 rounded-full mb-8 mt-2 overflow-hidden">
                           <div className="h-full bg-slate-900 rounded-full transition-all duration-500" style={{ width: `${((currentQuizIndex + 1) / activeQuizSet.length) * 100}%` }} />
                         </div>
-                        <p className="text-xl md:text-2xl font-black text-slate-900 mb-10 leading-snug">{activeQuizSet[currentQuizIndex]?.question}</p>
+                        <p className="text-xl md:text-2xl font-black text-black mb-10 leading-snug">{activeQuizSet[currentQuizIndex]?.question}</p>
                         <div className="space-y-3">
                            {activeQuizSet[currentQuizIndex]?.options.map((o, idx) => {
                              const isSelected = selectedQuizOption === o;
@@ -618,14 +620,14 @@ const StudySession: React.FC<StudySessionProps> = ({ subtopic, agent, onComplete
                                  disabled={showAnswer}
                                  className={`w-full text-left p-5 md:p-6 rounded-2xl border-2 font-semibold text-base transition-all duration-300 ${
                                    isCorrectAnswer
-                                     ? 'border-emerald-400 bg-emerald-50 text-emerald-900'
+                                     ? 'border-emerald-500 bg-emerald-50 text-emerald-900'
                                      : isWrongSelected
-                                       ? 'border-rose-400 bg-rose-50 text-rose-900'
+                                       ? 'border-rose-500 bg-rose-50 text-rose-900'
                                        : isSelected
-                                         ? 'border-slate-900 bg-slate-50 text-slate-900 shadow-md'
+                                         ? 'border-slate-900 bg-slate-100 text-black shadow-md'
                                          : showAnswer
-                                           ? 'border-slate-100 bg-slate-50/50 text-slate-400'
-                                           : 'border-slate-200 bg-white hover:bg-slate-50 hover:border-slate-400 text-slate-800'
+                                           ? 'border-slate-200 bg-slate-50 text-slate-400'
+                                           : 'border-slate-200 bg-white hover:bg-slate-50 hover:border-slate-400 text-black'
                                  }`}
                                >
                                  <span className="flex items-start gap-4">
@@ -633,9 +635,9 @@ const StudySession: React.FC<StudySessionProps> = ({ subtopic, agent, onComplete
                                      isCorrectAnswer ? 'bg-emerald-500 text-white'
                                      : isWrongSelected ? 'bg-rose-500 text-white'
                                      : isSelected ? 'bg-slate-900 text-white'
-                                     : 'bg-slate-100 text-slate-600'
+                                     : 'bg-slate-100 text-slate-700'
                                    }`}>{String.fromCharCode(65 + idx)}</span>
-                                   <span className="leading-relaxed pt-0.5">{o}</span>
+                                   <span className="leading-relaxed pt-0.5 text-inherit">{o}</span>
                                  </span>
                                </button>
                              );
@@ -647,9 +649,9 @@ const StudySession: React.FC<StudySessionProps> = ({ subtopic, agent, onComplete
                       )}
                       {showAnswer && (
                         <div className="space-y-6 animate-in slide-in-from-bottom-4 duration-300">
-                          <div className={`p-8 rounded-2xl border ${selectedQuizOption === activeQuizSet[currentQuizIndex]?.answer ? 'bg-emerald-50 border-emerald-200 text-emerald-900' : 'bg-rose-50 border-rose-200 text-rose-900'}`}>
+                          <div className={`p-8 rounded-2xl border-2 ${selectedQuizOption === activeQuizSet[currentQuizIndex]?.answer ? 'bg-emerald-50 border-emerald-300 text-emerald-900' : 'bg-rose-50 border-rose-300 text-rose-900'}`}>
                             <p className="font-black text-lg mb-2">{selectedQuizOption === activeQuizSet[currentQuizIndex]?.answer ? 'Correct' : 'Incorrect'}</p>
-                            <p className="text-sm font-medium leading-relaxed opacity-80">{activeQuizSet[currentQuizIndex]?.explanation || ''}</p>
+                            <p className="text-sm font-semibold leading-relaxed">{activeQuizSet[currentQuizIndex]?.explanation || ''}</p>
                           </div>
                           <button onClick={() => {
                             const currentQ = activeQuizSet[currentQuizIndex];
@@ -689,14 +691,14 @@ const StudySession: React.FC<StudySessionProps> = ({ subtopic, agent, onComplete
                     </div>
                     <button
                       onClick={finalizeSession}
-                      disabled={isFinalizing}
+                      disabled={isFinalizing || isFinalized}
                       className={`w-full py-7 rounded-[2.5rem] font-black uppercase tracking-widest shadow-2xl transition-all ${
-                        isFinalizing
+                        isFinalizing || isFinalized
                           ? 'bg-slate-300 text-slate-500 cursor-not-allowed'
                           : 'bg-slate-900 text-white hover:bg-slate-800 active:scale-95'
                       }`}
                     >
-                      {isFinalizing ? 'Finalizing...' : 'Finalize Mastery'}
+                      {isFinalized ? 'Session Saved' : isFinalizing ? 'Finalizing...' : 'Finalize Mastery'}
                     </button>
                  </div>
                ) : null}

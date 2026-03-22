@@ -1038,8 +1038,14 @@ const App: React.FC = () => {
                                           <div className="flex items-center justify-between w-full">
                                             <span className="text-amber-400 group-hover:text-amber-300 transition-colors">Start Review →</span>
                                             <button
-                                              onClick={(e) => { e.stopPropagation(); handleMarkReviewRead(selectedAgentId!, sub.id); }}
-                                              className="text-[10px] font-black uppercase tracking-widest text-white/40 hover:text-emerald-400 transition-colors px-3 py-1 rounded-lg hover:bg-emerald-500/10 border border-transparent hover:border-emerald-400/30"
+                                              onClick={(e) => {
+                                                e.stopPropagation();
+                                                const btn = e.currentTarget;
+                                                if (btn.dataset.clicked) return;
+                                                btn.dataset.clicked = 'true';
+                                                handleMarkReviewRead(selectedAgentId!, sub.id);
+                                              }}
+                                              className="text-[10px] font-black uppercase tracking-widest text-white/40 hover:text-emerald-400 transition-colors px-3 py-1.5 rounded-lg hover:bg-emerald-500/10 border border-transparent hover:border-emerald-400/30"
                                             >
                                               Mark as Read
                                             </button>
