@@ -84,15 +84,35 @@ router.post("/api/auth/google", async (req, res) => {
     const clientId = process.env.GOOGLE_CLIENT_ID;
     if (!clientId) return res.status(500).json({ error: "GOOGLE_CLIENT_ID is not set" });
     const client = new OAuth2Client(clientId);
-    const ticket = await client.verifyIdToken({ idToken: credential, audience: clientId });
-    const payload = ticket.getPayload();
+    let payload;
+    try {
+      const ticket = await client.verifyIdToken({ idToken: credential, audience: clientId });
+      payload = ticket.getPayload();
+    } catch (verifyErr) {
+      console.error("[Google Auth] Token verification failed:", verifyErr?.message || verifyErr);
+      return res.status(401).json({ error: "Invalid Google credential" });
+    }
     const email = payload?.email?.toLowerCase().trim();
     const name = payload?.name || payload?.given_name;
     if (!email) return res.status(400).json({ error: "Google token missing email" });
     let user = await User.findOne({ email });
-    if (!user) user = await User.create({ uid: crypto.randomBytes(12).toString("hex"), name: name || email.split("@")[0], email, created_at: new Date() });
+    if (!user) {
+      try {
+        user = await User.create({ uid: crypto.randomBytes(12).toString("hex"), name: name || email.split("@")[0], email, created_at: new Date() });
+      } catch (dbErr) {
+        console.error("[Google Auth] DB create error:", dbErr?.message || dbErr);
+        // If duplicate email (race condition), just fetch again
+        if (dbErr?.code === 11000) {
+          user = await User.findOne({ email });
+        }
+        if (!user) return res.status(500).json({ error: dbErr?.message || "Failed to create user" });
+      }
+    }
     return res.json({ ok: true, profile: { uid: user.uid, email: user.email, name: user.name } });
-  } catch { return res.status(401).json({ error: "Invalid Google credential" }); }
+  } catch (err) {
+    console.error("[Google Auth] Unexpected error:", err?.message || err);
+    return res.status(500).json({ error: err?.message || "Google auth failed" });
+  }
 });
 
 router.post("/api/auth/login-google", async (req, res) => {
@@ -101,9 +121,22 @@ router.post("/api/auth/login-google", async (req, res) => {
     const name = String(req.body?.name || "");
     if (!email) return res.status(400).json({ error: "email required" });
     let user = await User.findOne({ email });
-    if (!user) user = await User.create({ uid: crypto.randomBytes(12).toString("hex"), name: name || email.split("@")[0], email, created_at: new Date() });
+    if (!user) {
+      try {
+        user = await User.create({ uid: crypto.randomBytes(12).toString("hex"), name: name || email.split("@")[0], email, created_at: new Date() });
+      } catch (dbErr) {
+        console.error("[Login-Google] DB create error:", dbErr?.message || dbErr);
+        if (dbErr?.code === 11000) {
+          user = await User.findOne({ email });
+        }
+        if (!user) return res.status(500).json({ error: dbErr?.message || "Failed to create user" });
+      }
+    }
     return res.json({ ok: true, user: { uid: user.uid, name: user.name, email: user.email, created_at: user.created_at } });
-  } catch (err) { return res.status(500).json({ error: err?.message || "Failed" }); }
+  } catch (err) {
+    console.error("[Login-Google] Unexpected error:", err?.message || err);
+    return res.status(500).json({ error: err?.message || "Failed" });
+  }
 });
 
 // ── Register / Login ──────────────────────────────────────────────────────────

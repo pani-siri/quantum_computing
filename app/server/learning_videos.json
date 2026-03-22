@@ -448,5 +448,30 @@
       }
     ],
     "created_at": "2026-03-18T19:09:55.337Z"
+  },
+  {
+    "id": 1773904795512,
+    "user_id": "4d387af5139562ee07c2e769",
+    "subject": "Data Analytics",
+    "topic": "What is Data Analytics?",
+    "version": 1,
+    "videos": [
+      {
+        "title": "Data Analytics vs Data Science",
+        "url": "https://www.youtube.com/watch?v=dcXqhMqhZUo",
+        "description": "Explore analytics tools and solutions → https://ibm.biz/BdSPGc Are you interested in data science? And have you heard of data ..."
+      },
+      {
+        "title": "Data Analysis Kya Hota Hai? Different Types of Tools Data Analysts Use",
+        "url": "https://www.youtube.com/watch?v=2fkRMGIMbXg",
+        "description": "What is data analytics? In this video we have discussed what is data analysis in Hindi. Get to know about the types of data ..."
+      },
+      {
+        "title": "How to become a Data Analyst? | Complete Roadmap for Data Analyst🔥",
+        "url": "https://www.youtube.com/watch?v=8411fEhNKNc",
+        "description": "Enroll in my Data Analyst course here: ..."
+      }
+    ],
+    "created_at": "2026-03-19T07:19:55.512Z"
   }
 ]
