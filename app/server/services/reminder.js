@@ -187,3 +187,12 @@ export function stopReminderService() {
     reminderInterval = null;
   }
 }
+
+// Send a test reminder to a specific email
+export async function sendTestReminder(email, userName) {
+  const fakeEvent = {
+    title: "Study: Test Reminder - Quantum Computing Basics",
+    start_time: new Date(Date.now() + 30 * 60000).toISOString(),
+  };
+  return sendReminderEmail(email, userName, fakeEvent, "SmartLearn Test");
+}

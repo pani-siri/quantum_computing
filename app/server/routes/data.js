@@ -1,6 +1,6 @@
 import { Router } from "express";
 import { Agent, TaskDoc, Schedule, Analytics } from "../models.js";
-import { getReminderPrefs, setReminderPrefs } from "../services/reminder.js";
+import { getReminderPrefs, setReminderPrefs, sendTestReminder } from "../services/reminder.js";
 
 const router = Router();
 
@@ -106,6 +106,17 @@ router.post("/api/data/reminder-prefs", (req, res) => {
     if (!uid) return res.status(400).json({ error: "uid required" });
     const updated = setReminderPrefs(uid, prefs || {});
     return res.json({ ok: true, prefs: updated });
+  } catch (err) { return res.status(500).json({ error: err?.message || "Failed" }); }
+});
+
+// ── Test Reminder (dev only) ─────────────────────────────────────────────────
+router.get("/api/data/test-reminder", async (req, res) => {
+  try {
+    const email = String(req.query.email || "");
+    const name = String(req.query.name || "Student");
+    if (!email || !email.includes("@")) return res.status(400).json({ error: "?email=you@example.com required" });
+    const sent = await sendTestReminder(email, name);
+    return res.json({ ok: sent, message: sent ? `Test reminder sent to ${email}` : "Failed to send — check server logs" });
   } catch (err) { return res.status(500).json({ error: err?.message || "Failed" }); }
 });
 
