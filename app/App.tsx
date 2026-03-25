@@ -608,27 +608,27 @@ const App: React.FC = () => {
     if (subtopic) setActiveSession({ agentId, subtopic });
   };
 
-  if (!currentUser) {
-    // Show About landing page before login
-    if (showLanding) {
-      return (
-        <div className="min-h-screen figma-bg flex flex-col text-white relative overflow-x-hidden">
-          <AbstractBackground />
-          <div className="flex-1 overflow-y-auto">
-            <About />
-            <div className="text-center pb-16">
-              <button
-                onClick={() => setShowLanding(false)}
-                className="px-14 py-6 bg-white text-[#0d62bb] rounded-[2rem] font-black uppercase tracking-widest shadow-2xl hover:bg-slate-50 hover:-translate-y-1 active:scale-95 transition-all text-lg"
-              >
-                Get Started
-              </button>
-            </div>
+  // Show About landing page FIRST — before login or app
+  if (showLanding) {
+    return (
+      <div className="min-h-screen figma-bg flex flex-col text-white relative overflow-x-hidden">
+        <AbstractBackground />
+        <div className="flex-1 overflow-y-auto">
+          <About />
+          <div className="text-center pb-16">
+            <button
+              onClick={() => setShowLanding(false)}
+              className="px-14 py-6 bg-white text-[#0d62bb] rounded-[2rem] font-black uppercase tracking-widest shadow-2xl hover:bg-slate-50 hover:-translate-y-1 active:scale-95 transition-all text-lg"
+            >
+              Get Started
+            </button>
           </div>
         </div>
-      );
-    }
+      </div>
+    );
+  }
 
+  if (!currentUser) {
     return (
       <div className="min-h-screen figma-bg flex items-center justify-center p-6 sm:p-12 relative overflow-hidden">
         <AbstractBackground />
