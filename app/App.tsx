@@ -11,11 +11,12 @@ import Planner from './components/Planner';
 import Profile from './components/Profile';
 import FinalAssessmentView from './components/FinalAssessmentView';
 import AbstractBackground from './components/AbstractBackground';
+import About from './components/About';
 import Navbar from './components/Navbar';
 import { Trophy, Sparkles, Home, Calendar, Zap, User as UserIcon, Lock, CheckCircle2, Trash2 } from 'lucide-react';
 
 const App: React.FC = () => {
-  const [activeScreen, setActiveScreen] = useState<'home' | 'planner' | 'stats' | 'me'>('home');
+  const [activeScreen, setActiveScreen] = useState<'home' | 'planner' | 'stats' | 'about' | 'me'>('home');
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [isAuthMode, setIsAuthMode] = useState<'login' | 'register'>('login');
   const [authStep, setAuthStep] = useState<'auth' | 'registerOtp' | 'forgotEmail' | 'resetOtp' | 'resetPassword'>('auth');
@@ -1118,6 +1119,7 @@ const App: React.FC = () => {
 
         {activeScreen === 'planner' && <Planner tasks={tasks} schedule={schedule} agents={agents} currentUser={currentUser} onStartSession={handleStartSessionFromPlanner} onUpdateSchedule={(updated) => { setSchedule(updated); if (currentUser) firebaseService.saveSchedule(currentUser.uid, updated); }} />}
         {activeScreen === 'stats' && <Dashboard agents={agents} />}
+        {activeScreen === 'about' && <About />}
         {activeScreen === 'me' && (
           <Profile
             user={currentUser}
@@ -1133,7 +1135,8 @@ const App: React.FC = () => {
           { id: 'home', label: 'Subjects', icon: Home },
           { id: 'planner', label: 'Schedule', icon: Calendar },
           { id: 'stats', label: 'Velocity', icon: Zap },
-          { id: 'me', label: 'Profile', icon: UserIcon }
+          { id: 'me', label: 'Profile', icon: UserIcon },
+          { id: 'about', label: 'About', icon: Sparkles }
         ].map(n => (
           <button key={n.id} onClick={() => { setActiveScreen(n.id as any); setSelectedAgentId(null); }} className={`relative flex flex-col items-center justify-center w-16 h-16 rounded-[1.5rem] transition-all duration-300 ${activeScreen === n.id ? 'text-white' : 'text-white/50 hover:text-white/80'}`}>
             {activeScreen === n.id && (

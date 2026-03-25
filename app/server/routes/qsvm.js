@@ -13,6 +13,7 @@ function runPython(scriptPath, args) {
   return new Promise((resolve, reject) => {
     const child = spawn(pythonCmd, [scriptPath, ...args], { stdio: ["ignore", "pipe", "pipe"] });
     let stdout = "", stderr = "";
+    child.on("error", err => reject(new Error(`Failed to start Python (${pythonCmd}): ${err.message}`)));
     child.stdout.on("data", d => stdout += d.toString());
     child.stderr.on("data", d => stderr += d.toString());
     child.on("close", code => {

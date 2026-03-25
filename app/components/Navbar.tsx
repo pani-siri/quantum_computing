@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Home, Calendar, Zap, User as UserIcon, LogOut, BrainCircuit } from 'lucide-react';
+import { Home, Calendar, Zap, User as UserIcon, LogOut, BrainCircuit, Info } from 'lucide-react';
 import { User } from '../types'; // Adjust typing import as necessary
 
 interface NavbarProps {
@@ -36,7 +36,8 @@ const Navbar: React.FC<NavbarProps> = ({ currentUser, activeScreen, setActiveScr
           { id: 'home', label: 'Subjects', icon: Home },
           { id: 'planner', label: 'Schedule', icon: Calendar },
           { id: 'stats', label: 'Velocity', icon: Zap },
-          { id: 'me', label: 'Profile', icon: UserIcon }
+          { id: 'me', label: 'Profile', icon: UserIcon },
+          { id: 'about', label: 'About', icon: Info }
         ].map(n => (
           <button 
             key={n.id} 
