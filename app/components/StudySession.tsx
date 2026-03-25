@@ -4,7 +4,7 @@ import { SubTopic, MasteryState, ChatMessage, LearningAgent, AcademicBundle, Cog
 import { fastapiService } from '../services/fastapiService';
 import { BehavioralMetrics } from '../services/quantumSimulator';
 import { extractNotesFeatures, extractQuizFeatures, extractVideoFeatures } from '../services/qsvmFeatureExtractor';
-import { ExternalLink, Youtube, FileText, BookOpen, GraduationCap, CheckCircle2, FileSearch, LibraryBig, Sparkles } from 'lucide-react';
+import { ExternalLink, Youtube, FileText, BookOpen, GraduationCap, CheckCircle2, FileSearch, LibraryBig, Sparkles, Layers } from 'lucide-react';
 
 interface StudySessionProps {
   subtopic: SubTopic;
@@ -15,7 +15,8 @@ interface StudySessionProps {
 }
 
 const StudySession: React.FC<StudySessionProps> = ({ subtopic, agent, onComplete, onExit, onUpdateChat }) => {
-  const [activeTab, setActiveTab] = useState<'video' | 'notes' | 'materials' | 'quiz' | 'chat'>('video');
+  const [activeTab, setActiveTab] = useState<'video' | 'notes' | 'materials' | 'flashcards' | 'quiz' | 'chat'>('video');
+  const [flippedCards, setFlippedCards] = useState<Set<number>>(new Set());
   const [timeSpent, setTimeSpent] = useState(0);
   const [focusTime, setFocusTime] = useState(0);
   const [distractions, setDistractions] = useState(0);
@@ -414,6 +415,7 @@ const StudySession: React.FC<StudySessionProps> = ({ subtopic, agent, onComplete
              { id: 'video', label: 'Watch', icon: <Youtube size={22}/> },
              { id: 'notes', label: 'Read', icon: <BookOpen size={22}/> },
              { id: 'materials', label: 'Library', icon: <LibraryBig size={22}/> },
+             { id: 'flashcards', label: 'Cards', icon: <Layers size={22}/> },
              { id: 'quiz', label: 'Quiz', icon: <CheckCircle2 size={22}/> },
              { id: 'chat', label: 'Tutor', icon: <GraduationCap size={22}/> }
            ].map(t => (
@@ -551,6 +553,60 @@ const StudySession: React.FC<StudySessionProps> = ({ subtopic, agent, onComplete
                    <p className="text-xl font-black text-indigo-950 mb-1">Digital Library Active</p>
                    <p className="text-sm font-bold text-indigo-800/70 leading-relaxed max-w-3xl">These resources are curated from open-source educational repositories (OER) specifically cross-referenced for <span className="text-indigo-600">"{subtopic.title}"</span>.</p>
                 </div>
+              </div>
+            </div>
+          )}
+
+          {activeTab === 'flashcards' && (
+            <div className="max-w-3xl mx-auto space-y-12 animate-in fade-in duration-700">
+              <div className="border-b border-slate-100 pb-8">
+                <h3 className="text-5xl font-black italic tracking-tighter drop-shadow-sm">Flash Cards</h3>
+                <p className="text-slate-500 font-medium mt-2 text-lg">Tap a card to flip it. Review before taking the quiz.</p>
+              </div>
+              {bundle?.flashcards && bundle.flashcards.length > 0 ? (
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+                  {bundle.flashcards.map((fc, i) => {
+                    const isFlipped = flippedCards.has(i);
+                    return (
+                      <div
+                        key={i}
+                        onClick={() => setFlippedCards(prev => {
+                          const next = new Set(prev);
+                          if (next.has(i)) next.delete(i); else next.add(i);
+                          return next;
+                        })}
+                        className="cursor-pointer group perspective-[800px]"
+                      >
+                        <div className={`relative w-full min-h-[220px] transition-transform duration-500 [transform-style:preserve-3d] ${isFlipped ? '[transform:rotateY(180deg)]' : ''}`}>
+                          {/* Front */}
+                          <div className="absolute inset-0 [backface-visibility:hidden] bg-gradient-to-br from-indigo-500 to-violet-600 rounded-[2.5rem] p-8 flex flex-col items-center justify-center text-center shadow-xl border border-white/20">
+                            <span className="text-[9px] font-black uppercase tracking-widest text-indigo-200 mb-4">Question</span>
+                            <p className="text-white font-black text-lg leading-snug">{fc.front}</p>
+                            <span className="text-[9px] font-bold text-indigo-200/60 mt-6 uppercase tracking-widest">Tap to flip</span>
+                          </div>
+                          {/* Back */}
+                          <div className="absolute inset-0 [backface-visibility:hidden] [transform:rotateY(180deg)] bg-white rounded-[2.5rem] p-8 flex flex-col items-center justify-center text-center shadow-xl border-2 border-indigo-200">
+                            <span className="text-[9px] font-black uppercase tracking-widest text-indigo-400 mb-4">Answer</span>
+                            <p className="text-slate-800 font-bold text-base leading-relaxed">{fc.back}</p>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              ) : (
+                <div className="py-32 flex flex-col items-center justify-center bg-white/50 backdrop-blur-sm border-2 border-dashed border-slate-200 rounded-[4rem] text-slate-400">
+                  <Layers size={64} className="mb-6 animate-pulse opacity-30 text-indigo-300" />
+                  <p className="text-lg font-bold text-slate-500">No flashcards available for this topic.</p>
+                </div>
+              )}
+              <div className="text-center pt-4">
+                <button
+                  onClick={() => setActiveTab('quiz')}
+                  className="px-12 py-5 bg-slate-900 text-white rounded-2xl font-black uppercase tracking-widest shadow-lg hover:bg-slate-800 active:scale-95 transition-all"
+                >
+                  Ready for Quiz →
+                </button>
               </div>
             </div>
           )}

@@ -130,7 +130,7 @@ router.post("/api/ai/content", async (req, res) => {
     const llmOpts = { response_format: "json_object", num_predict: 2500, timeout: 90000 };
 
     // Assemble the bundle from sequential smaller LLM calls (Ollama processes one at a time)
-    const bundle = { notes: "", videos: [], materials: [], quiz: [] };
+    const bundle = { notes: "", videos: [], materials: [], quiz: [], flashcards: [] };
 
     // Helper: call LLM and parse, return null on failure
     async function genPart(label, userPrompt) {
@@ -152,10 +152,11 @@ router.post("/api/ai/content", async (req, res) => {
       `Write detailed study notes for "${subtopicTitle}" in "${subject}". ${adapt}\nIMPORTANT: Use MARKDOWN formatting only (NOT HTML). Use ## for headings, **bold** for key terms, - for bullet points, numbered lists with 1. 2. etc.\nReturn JSON: {"notes": "<400+ words of markdown-formatted study notes>"}`);
     if (notesData?.notes) bundle.notes = notesData.notes;
 
-    // 2. Quiz (5 MCQs)
-    const quizData = await genPart("quiz",
-      `Create 5 MCQs for "${subtopicTitle}" in "${subject}". ${adapt}\nReturn JSON: {"quiz": [{"question":"...","options":["A","B","C","D"],"answer":"...","explanation":"..."}]}`);
+    // 2. Quiz (5 MCQs) + Flashcards (3 cards) — single LLM call
+    const quizData = await genPart("quiz+flashcards",
+      `Create 5 MCQs AND 3 flashcards for "${subtopicTitle}" in "${subject}". ${adapt}\nReturn JSON: {"quiz": [{"question":"...","options":["A","B","C","D"],"answer":"...","explanation":"..."}], "flashcards": [{"front":"<question or term>","back":"<answer or definition>"}]}`);
     if (Array.isArray(quizData?.quiz)) bundle.quiz = quizData.quiz;
+    bundle.flashcards = Array.isArray(quizData?.flashcards) ? quizData.flashcards : [];
 
     // Generate materials programmatically (no LLM needed)
     const searchQ = encodeURIComponent(`${subtopicTitle} ${subject}`);
