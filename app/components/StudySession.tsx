@@ -5,6 +5,7 @@ import { fastapiService } from '../services/fastapiService';
 import { BehavioralMetrics } from '../services/quantumSimulator';
 import { extractNotesFeatures, extractQuizFeatures, extractVideoFeatures } from '../services/qsvmFeatureExtractor';
 import { ExternalLink, Youtube, FileText, BookOpen, GraduationCap, CheckCircle2, FileSearch, LibraryBig, Sparkles, Layers, AlertTriangle } from 'lucide-react';
+import { detectFace } from '../services/faceDetector';
 
 interface StudySessionProps {
   subtopic: SubTopic;
@@ -65,7 +66,6 @@ const StudySession: React.FC<StudySessionProps> = ({ subtopic, agent, onComplete
   const [cameraActive, setCameraActive] = useState(false);
   const faceWarningTimeoutRef = useRef<any>(null);
   const consecutiveMissRef = useRef(0);
-  const prevFrameRef = useRef<ImageData | null>(null);
   const webcamVideoRef = useRef<HTMLVideoElement | null>(null);
 
   // Ref callback — attaches stream to video element whenever it appears in DOM
@@ -106,54 +106,20 @@ const StudySession: React.FC<StudySessionProps> = ({ subtopic, agent, onComplete
     };
   }, []);
 
-  // Face detection loop — uses FaceDetector if available, else motion-based fallback
+  // Face detection loop — skin-color based detector (no external API)
   useEffect(() => {
     if (!cameraActive) return;
 
     const canvas = document.createElement('canvas');
     const ctx = canvas.getContext('2d', { willReadFrequently: true })!;
-    const hasFaceDetector = 'FaceDetector' in window;
-    let detector: any = null;
-    if (hasFaceDetector) {
-      try { detector = new (window as any).FaceDetector({ fastMode: true, maxDetectedFaces: 1 }); } catch { detector = null; }
-    }
 
-    faceCheckRef.current = setInterval(async () => {
+    faceCheckRef.current = setInterval(() => {
       const video = webcamVideoRef.current;
       if (!video || video.readyState < 2) return;
 
-      canvas.width = video.videoWidth || 160;
-      canvas.height = video.videoHeight || 160;
-      ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+      const result = detectFace(video, canvas, ctx);
 
-      let facePresent = true;
-
-      if (detector) {
-        // Chrome FaceDetector API
-        try {
-          const faces = await detector.detect(canvas);
-          facePresent = faces.length > 0;
-        } catch { facePresent = true; }
-      } else {
-        // Motion-based fallback: compare current frame to previous
-        const currentFrame = ctx.getImageData(0, 0, canvas.width, canvas.height);
-        if (prevFrameRef.current) {
-          let diffSum = 0;
-          const len = currentFrame.data.length;
-          const prev = prevFrameRef.current.data;
-          const curr = currentFrame.data;
-          // Sample every 16th pixel for speed
-          for (let i = 0; i < len; i += 16) {
-            diffSum += Math.abs(curr[i] - prev[i]);
-          }
-          const avgDiff = diffSum / (len / 16);
-          // Very low motion = nobody there (screen static / empty chair)
-          facePresent = avgDiff > 2.5;
-        }
-        prevFrameRef.current = currentFrame;
-      }
-
-      if (!facePresent) {
+      if (!result.faceDetected) {
         consecutiveMissRef.current += 1;
         if (consecutiveMissRef.current >= 2) {
           setShowFaceWarning(true);
