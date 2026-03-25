@@ -64,46 +64,47 @@ const StudySession: React.FC<StudySessionProps> = ({ subtopic, agent, onComplete
   const faceCheckRef = useRef<any>(null);
   const [showFaceWarning, setShowFaceWarning] = useState(false);
   const [cameraActive, setCameraActive] = useState(false);
+  const [cameraError, setCameraError] = useState(false);
   const faceWarningTimeoutRef = useRef<any>(null);
   const consecutiveMissRef = useRef(0);
   const webcamVideoRef = useRef<HTMLVideoElement | null>(null);
 
-  // Ref callback — attaches stream to video element whenever it appears in DOM
+  const startCamera = async () => {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ video: { width: { ideal: 160 }, height: { ideal: 160 }, facingMode: 'user' } });
+      webcamStreamRef.current = stream;
+      setCameraActive(true);
+      setCameraError(false);
+      // Attach to video element if it exists
+      if (webcamVideoRef.current) {
+        webcamVideoRef.current.srcObject = stream;
+        webcamVideoRef.current.play().catch(() => {});
+      }
+    } catch (err) {
+      console.warn('[CAMERA] Failed:', err);
+      setCameraActive(false);
+      setCameraError(true);
+    }
+  };
+
+  // Ref callback — attaches stream to video element whenever it mounts
   const webcamRefCallback = (el: HTMLVideoElement | null) => {
     webcamVideoRef.current = el;
     if (el && webcamStreamRef.current) {
-      // Always re-attach (element may be new after conditional render)
       el.srcObject = webcamStreamRef.current;
       el.play().catch(() => {});
     }
   };
 
-  // Fullscreen on mount
+  // Start camera first, then fullscreen (camera prompt needs non-fullscreen context)
   useEffect(() => {
-    document.documentElement.requestFullscreen?.().catch(() => {});
-    return () => { document.exitFullscreen?.().catch(() => {}); };
-  }, []);
-
-  // Start webcam (once, on mount — stream stored in ref, attached via callback)
-  useEffect(() => {
-    let cancelled = false;
-    navigator.mediaDevices.getUserMedia({ video: { width: 160, height: 160, facingMode: 'user' } })
-      .then(stream => {
-        if (cancelled) { stream.getTracks().forEach(t => t.stop()); return; }
-        webcamStreamRef.current = stream;
-        setCameraActive(true);
-        // Attach to video if already rendered
-        if (webcamVideoRef.current && !webcamVideoRef.current.srcObject) {
-          webcamVideoRef.current.srcObject = stream;
-          webcamVideoRef.current.play().catch(() => {});
-        }
-      })
-      .catch(() => { if (!cancelled) setCameraActive(false); });
-
+    startCamera().then(() => {
+      document.documentElement.requestFullscreen?.().catch(() => {});
+    });
     return () => {
-      cancelled = true;
       webcamStreamRef.current?.getTracks().forEach(t => t.stop());
       webcamStreamRef.current = null;
+      document.exitFullscreen?.().catch(() => {});
     };
   }, []);
 
@@ -490,7 +491,11 @@ const StudySession: React.FC<StudySessionProps> = ({ subtopic, agent, onComplete
       <header className="h-20 border-b flex items-center justify-between px-8 bg-white shrink-0 relative z-20 shadow-sm">
         <div className="flex items-center gap-5">
           {/* Webcam circle */}
-          <div className={`w-12 h-12 rounded-full overflow-hidden border-2 shadow-lg shrink-0 relative ${cameraActive ? (showFaceWarning ? 'border-rose-500 shadow-rose-500/30' : 'border-emerald-500 shadow-emerald-500/20') : 'border-slate-300'}`}>
+          <div
+            onClick={() => { if (!cameraActive) startCamera(); }}
+            className={`w-12 h-12 rounded-full overflow-hidden border-2 shadow-lg shrink-0 relative ${cameraActive ? (showFaceWarning ? 'border-rose-500 shadow-rose-500/30' : 'border-emerald-500 shadow-emerald-500/20') : 'border-slate-300 cursor-pointer hover:border-indigo-400'}`}
+            title={cameraActive ? 'Webcam active' : 'Click to enable camera'}
+          >
             <video
               ref={webcamRefCallback}
               autoPlay
@@ -500,7 +505,10 @@ const StudySession: React.FC<StudySessionProps> = ({ subtopic, agent, onComplete
             />
             {!cameraActive && (
               <div className="absolute inset-0 bg-slate-100 flex items-center justify-center">
-                <GraduationCap size={20} className="text-slate-400" />
+                {cameraError
+                  ? <span className="text-[7px] font-black text-slate-400 uppercase text-center leading-tight px-1">Click to<br/>enable</span>
+                  : <div className="w-4 h-4 border-2 border-indigo-500 border-t-transparent rounded-full animate-spin" />
+                }
               </div>
             )}
             {showFaceWarning && cameraActive && (
