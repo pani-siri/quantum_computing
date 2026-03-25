@@ -59,69 +59,119 @@ const StudySession: React.FC<StudySessionProps> = ({ subtopic, agent, onComplete
   const timerRef = useRef<any>(null);
 
   // Webcam & Face Detection
-  const webcamRef = useRef<HTMLVideoElement | null>(null);
   const webcamStreamRef = useRef<MediaStream | null>(null);
   const faceCheckRef = useRef<any>(null);
   const [showFaceWarning, setShowFaceWarning] = useState(false);
   const [cameraActive, setCameraActive] = useState(false);
   const faceWarningTimeoutRef = useRef<any>(null);
   const consecutiveMissRef = useRef(0);
+  const prevFrameRef = useRef<ImageData | null>(null);
+  const webcamVideoRef = useRef<HTMLVideoElement | null>(null);
 
-  // Fullscreen + Webcam setup
+  // Ref callback — attaches stream to video element whenever it appears in DOM
+  const webcamRefCallback = (el: HTMLVideoElement | null) => {
+    webcamVideoRef.current = el;
+    if (el && webcamStreamRef.current && !el.srcObject) {
+      el.srcObject = webcamStreamRef.current;
+      el.play().catch(() => {});
+    }
+  };
+
+  // Fullscreen on mount
   useEffect(() => {
-    // Request fullscreen
     document.documentElement.requestFullscreen?.().catch(() => {});
+    return () => { document.exitFullscreen?.().catch(() => {}); };
+  }, []);
 
-    // Start webcam
+  // Start webcam (once, on mount — stream stored in ref, attached via callback)
+  useEffect(() => {
+    let cancelled = false;
     navigator.mediaDevices.getUserMedia({ video: { width: 160, height: 160, facingMode: 'user' } })
       .then(stream => {
+        if (cancelled) { stream.getTracks().forEach(t => t.stop()); return; }
         webcamStreamRef.current = stream;
-        if (webcamRef.current) {
-          webcamRef.current.srcObject = stream;
-          webcamRef.current.play().catch(() => {});
-        }
         setCameraActive(true);
-
-        // Face detection loop (Chrome FaceDetector API)
-        if ('FaceDetector' in window) {
-          const detector = new (window as any).FaceDetector({ fastMode: true, maxDetectedFaces: 1 });
-          const canvas = document.createElement('canvas');
-          const ctx = canvas.getContext('2d')!;
-
-          faceCheckRef.current = setInterval(async () => {
-            if (!webcamRef.current || webcamRef.current.readyState < 2) return;
-            canvas.width = webcamRef.current.videoWidth || 160;
-            canvas.height = webcamRef.current.videoHeight || 160;
-            ctx.drawImage(webcamRef.current, 0, 0);
-            try {
-              const faces = await detector.detect(canvas);
-              if (faces.length === 0) {
-                consecutiveMissRef.current += 1;
-                if (consecutiveMissRef.current >= 2) {
-                  setShowFaceWarning(true);
-                  setDistractions(d => d + 1);
-                  // Auto-hide warning after 5s
-                  clearTimeout(faceWarningTimeoutRef.current);
-                  faceWarningTimeoutRef.current = setTimeout(() => setShowFaceWarning(false), 5000);
-                }
-              } else {
-                consecutiveMissRef.current = 0;
-                setShowFaceWarning(false);
-              }
-            } catch {}
-          }, 3000);
+        // Attach to video if already rendered
+        if (webcamVideoRef.current && !webcamVideoRef.current.srcObject) {
+          webcamVideoRef.current.srcObject = stream;
+          webcamVideoRef.current.play().catch(() => {});
         }
       })
-      .catch(() => setCameraActive(false));
+      .catch(() => { if (!cancelled) setCameraActive(false); });
 
     return () => {
-      // Cleanup
-      if (faceCheckRef.current) clearInterval(faceCheckRef.current);
-      if (faceWarningTimeoutRef.current) clearTimeout(faceWarningTimeoutRef.current);
+      cancelled = true;
       webcamStreamRef.current?.getTracks().forEach(t => t.stop());
-      document.exitFullscreen?.().catch(() => {});
+      webcamStreamRef.current = null;
     };
   }, []);
+
+  // Face detection loop — uses FaceDetector if available, else motion-based fallback
+  useEffect(() => {
+    if (!cameraActive) return;
+
+    const canvas = document.createElement('canvas');
+    const ctx = canvas.getContext('2d', { willReadFrequently: true })!;
+    const hasFaceDetector = 'FaceDetector' in window;
+    let detector: any = null;
+    if (hasFaceDetector) {
+      try { detector = new (window as any).FaceDetector({ fastMode: true, maxDetectedFaces: 1 }); } catch { detector = null; }
+    }
+
+    faceCheckRef.current = setInterval(async () => {
+      const video = webcamVideoRef.current;
+      if (!video || video.readyState < 2) return;
+
+      canvas.width = video.videoWidth || 160;
+      canvas.height = video.videoHeight || 160;
+      ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+
+      let facePresent = true;
+
+      if (detector) {
+        // Chrome FaceDetector API
+        try {
+          const faces = await detector.detect(canvas);
+          facePresent = faces.length > 0;
+        } catch { facePresent = true; }
+      } else {
+        // Motion-based fallback: compare current frame to previous
+        const currentFrame = ctx.getImageData(0, 0, canvas.width, canvas.height);
+        if (prevFrameRef.current) {
+          let diffSum = 0;
+          const len = currentFrame.data.length;
+          const prev = prevFrameRef.current.data;
+          const curr = currentFrame.data;
+          // Sample every 16th pixel for speed
+          for (let i = 0; i < len; i += 16) {
+            diffSum += Math.abs(curr[i] - prev[i]);
+          }
+          const avgDiff = diffSum / (len / 16);
+          // Very low motion = nobody there (screen static / empty chair)
+          facePresent = avgDiff > 2.5;
+        }
+        prevFrameRef.current = currentFrame;
+      }
+
+      if (!facePresent) {
+        consecutiveMissRef.current += 1;
+        if (consecutiveMissRef.current >= 2) {
+          setShowFaceWarning(true);
+          setDistractions(d => d + 1);
+          clearTimeout(faceWarningTimeoutRef.current);
+          faceWarningTimeoutRef.current = setTimeout(() => setShowFaceWarning(false), 5000);
+        }
+      } else {
+        consecutiveMissRef.current = 0;
+        setShowFaceWarning(false);
+      }
+    }, 3000);
+
+    return () => {
+      if (faceCheckRef.current) clearInterval(faceCheckRef.current);
+      if (faceWarningTimeoutRef.current) clearTimeout(faceWarningTimeoutRef.current);
+    };
+  }, [cameraActive]);
 
   const synthesizeNode = async () => {
     setIsSynthesizing(true);
@@ -473,7 +523,7 @@ const StudySession: React.FC<StudySessionProps> = ({ subtopic, agent, onComplete
           {/* Webcam circle */}
           <div className={`w-12 h-12 rounded-full overflow-hidden border-2 shadow-lg shrink-0 relative ${cameraActive ? (showFaceWarning ? 'border-rose-500 shadow-rose-500/30' : 'border-emerald-500 shadow-emerald-500/20') : 'border-slate-300'}`}>
             <video
-              ref={webcamRef}
+              ref={webcamRefCallback}
               autoPlay
               muted
               playsInline
