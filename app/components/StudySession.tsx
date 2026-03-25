@@ -4,7 +4,7 @@ import { SubTopic, MasteryState, ChatMessage, LearningAgent, AcademicBundle, Cog
 import { fastapiService } from '../services/fastapiService';
 import { BehavioralMetrics } from '../services/quantumSimulator';
 import { extractNotesFeatures, extractQuizFeatures, extractVideoFeatures } from '../services/qsvmFeatureExtractor';
-import { ExternalLink, Youtube, FileText, BookOpen, GraduationCap, CheckCircle2, FileSearch, LibraryBig, Sparkles, Layers } from 'lucide-react';
+import { ExternalLink, Youtube, FileText, BookOpen, GraduationCap, CheckCircle2, FileSearch, LibraryBig, Sparkles, Layers, AlertTriangle } from 'lucide-react';
 
 interface StudySessionProps {
   subtopic: SubTopic;
@@ -57,6 +57,71 @@ const StudySession: React.FC<StudySessionProps> = ({ subtopic, agent, onComplete
   const videoClicksRef = useRef<Record<number, number>>({});
 
   const timerRef = useRef<any>(null);
+
+  // Webcam & Face Detection
+  const webcamRef = useRef<HTMLVideoElement | null>(null);
+  const webcamStreamRef = useRef<MediaStream | null>(null);
+  const faceCheckRef = useRef<any>(null);
+  const [showFaceWarning, setShowFaceWarning] = useState(false);
+  const [cameraActive, setCameraActive] = useState(false);
+  const faceWarningTimeoutRef = useRef<any>(null);
+  const consecutiveMissRef = useRef(0);
+
+  // Fullscreen + Webcam setup
+  useEffect(() => {
+    // Request fullscreen
+    document.documentElement.requestFullscreen?.().catch(() => {});
+
+    // Start webcam
+    navigator.mediaDevices.getUserMedia({ video: { width: 160, height: 160, facingMode: 'user' } })
+      .then(stream => {
+        webcamStreamRef.current = stream;
+        if (webcamRef.current) {
+          webcamRef.current.srcObject = stream;
+          webcamRef.current.play().catch(() => {});
+        }
+        setCameraActive(true);
+
+        // Face detection loop (Chrome FaceDetector API)
+        if ('FaceDetector' in window) {
+          const detector = new (window as any).FaceDetector({ fastMode: true, maxDetectedFaces: 1 });
+          const canvas = document.createElement('canvas');
+          const ctx = canvas.getContext('2d')!;
+
+          faceCheckRef.current = setInterval(async () => {
+            if (!webcamRef.current || webcamRef.current.readyState < 2) return;
+            canvas.width = webcamRef.current.videoWidth || 160;
+            canvas.height = webcamRef.current.videoHeight || 160;
+            ctx.drawImage(webcamRef.current, 0, 0);
+            try {
+              const faces = await detector.detect(canvas);
+              if (faces.length === 0) {
+                consecutiveMissRef.current += 1;
+                if (consecutiveMissRef.current >= 2) {
+                  setShowFaceWarning(true);
+                  setDistractions(d => d + 1);
+                  // Auto-hide warning after 5s
+                  clearTimeout(faceWarningTimeoutRef.current);
+                  faceWarningTimeoutRef.current = setTimeout(() => setShowFaceWarning(false), 5000);
+                }
+              } else {
+                consecutiveMissRef.current = 0;
+                setShowFaceWarning(false);
+              }
+            } catch {}
+          }, 3000);
+        }
+      })
+      .catch(() => setCameraActive(false));
+
+    return () => {
+      // Cleanup
+      if (faceCheckRef.current) clearInterval(faceCheckRef.current);
+      if (faceWarningTimeoutRef.current) clearTimeout(faceWarningTimeoutRef.current);
+      webcamStreamRef.current?.getTracks().forEach(t => t.stop());
+      document.exitFullscreen?.().catch(() => {});
+    };
+  }, []);
 
   const synthesizeNode = async () => {
     setIsSynthesizing(true);
@@ -390,9 +455,41 @@ const StudySession: React.FC<StudySessionProps> = ({ subtopic, agent, onComplete
 
   return (
     <div className="fixed inset-0 bg-white z-[100] flex flex-col animate-in slide-in-from-bottom duration-500 overflow-hidden">
+      {/* Face detection warning overlay */}
+      {showFaceWarning && (
+        <div className="fixed top-24 left-1/2 -translate-x-1/2 z-[300] animate-in fade-in slide-in-from-top-4 duration-300">
+          <div className="flex items-center gap-3 px-6 py-4 bg-rose-500 text-white rounded-2xl shadow-2xl shadow-rose-500/40 border border-rose-400">
+            <AlertTriangle size={20} className="shrink-0 animate-pulse" />
+            <div>
+              <p className="font-black text-sm">Face not detected!</p>
+              <p className="text-[10px] font-bold text-rose-100">Please stay focused on your screen. Distraction logged.</p>
+            </div>
+          </div>
+        </div>
+      )}
+
       <header className="h-20 border-b flex items-center justify-between px-8 bg-white shrink-0 relative z-20 shadow-sm">
         <div className="flex items-center gap-5">
-          <button onClick={onExit} className="w-10 h-10 flex items-center justify-center hover:bg-slate-100 rounded-full transition-all border shadow-sm">✕</button>
+          {/* Webcam circle */}
+          <div className={`w-12 h-12 rounded-full overflow-hidden border-2 shadow-lg shrink-0 relative ${cameraActive ? (showFaceWarning ? 'border-rose-500 shadow-rose-500/30' : 'border-emerald-500 shadow-emerald-500/20') : 'border-slate-300'}`}>
+            <video
+              ref={webcamRef}
+              autoPlay
+              muted
+              playsInline
+              className="w-full h-full object-cover scale-x-[-1]"
+            />
+            {!cameraActive && (
+              <div className="absolute inset-0 bg-slate-100 flex items-center justify-center">
+                <GraduationCap size={20} className="text-slate-400" />
+              </div>
+            )}
+            {showFaceWarning && cameraActive && (
+              <div className="absolute inset-0 bg-rose-500/30 flex items-center justify-center animate-pulse">
+                <AlertTriangle size={16} className="text-white drop-shadow" />
+              </div>
+            )}
+          </div>
           <div>
             <h1 className="text-lg font-black tracking-tight leading-none truncate max-w-[200px] sm:max-w-md">{subtopic.title}</h1>
             <p className="text-[10px] font-black text-indigo-600 uppercase tracking-widest mt-1">Adaptive Academic Node</p>
@@ -403,9 +500,19 @@ const StudySession: React.FC<StudySessionProps> = ({ subtopic, agent, onComplete
               <span className="text-[10px] font-black text-slate-400 uppercase">Focus Timer</span>
               <span className="text-sm font-black italic text-indigo-600">{Math.floor(focusTime/60)}m {focusTime % 60}s</span>
            </div>
-           <div className="w-10 h-10 bg-indigo-600 rounded-xl flex items-center justify-center text-white shadow-lg">
-              <GraduationCap size={20} />
+           <div className="hidden sm:flex flex-col items-end">
+              <span className="text-[10px] font-black text-slate-400 uppercase">Distractions</span>
+              <span className={`text-sm font-black italic ${distractions > 3 ? 'text-rose-500' : 'text-slate-600'}`}>{distractions}</span>
            </div>
+           {isFinalized ? (
+             <button onClick={() => { document.exitFullscreen?.().catch(() => {}); onExit(); }} className="px-5 py-2.5 bg-indigo-600 text-white rounded-xl font-black text-[10px] uppercase tracking-widest shadow-lg hover:bg-indigo-700 active:scale-95 transition-all">
+               Exit Session
+             </button>
+           ) : (
+             <div className="w-10 h-10 bg-indigo-600 rounded-xl flex items-center justify-center text-white shadow-lg">
+                <GraduationCap size={20} />
+             </div>
+           )}
         </div>
       </header>
 
