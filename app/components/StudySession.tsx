@@ -113,9 +113,20 @@ const StudySession: React.FC<StudySessionProps> = ({ subtopic, agent, onComplete
     };
   }, []);
 
-  // Face detection loop — skin-color based detector (no external API)
+  // Face detection loop — only active during 'video' and 'quiz' tabs
+  // Video tab: passive monitoring (webcam shown, warnings displayed)
+  // Quiz tab: active monitoring (auto-starts camera, warnings + distraction logging)
+  // Other tabs: no monitoring at all
   useEffect(() => {
-    if (!cameraActive) return;
+    const isMonitoredTab = activeTab === 'video' || activeTab === 'quiz';
+    if (!cameraActive || !isMonitoredTab) {
+      // Clear any existing face check when leaving monitored tabs
+      if (faceCheckRef.current) clearInterval(faceCheckRef.current);
+      if (faceWarningTimeoutRef.current) clearTimeout(faceWarningTimeoutRef.current);
+      setShowFaceWarning(false);
+      consecutiveMissRef.current = 0;
+      return;
+    }
 
     const canvas = document.createElement('canvas');
     const ctx = canvas.getContext('2d', { willReadFrequently: true })!;
@@ -130,7 +141,10 @@ const StudySession: React.FC<StudySessionProps> = ({ subtopic, agent, onComplete
         consecutiveMissRef.current += 1;
         if (consecutiveMissRef.current >= 2) {
           setShowFaceWarning(true);
-          setDistractions(d => d + 1);
+          // Only count distractions during quiz
+          if (activeTab === 'quiz') {
+            setDistractions(d => d + 1);
+          }
           clearTimeout(faceWarningTimeoutRef.current);
           faceWarningTimeoutRef.current = setTimeout(() => setShowFaceWarning(false), 5000);
         }
@@ -144,7 +158,14 @@ const StudySession: React.FC<StudySessionProps> = ({ subtopic, agent, onComplete
       if (faceCheckRef.current) clearInterval(faceCheckRef.current);
       if (faceWarningTimeoutRef.current) clearTimeout(faceWarningTimeoutRef.current);
     };
-  }, [cameraActive]);
+  }, [cameraActive, activeTab]);
+
+  // Auto-start camera when entering the Quiz tab
+  useEffect(() => {
+    if (activeTab === 'quiz' && !cameraActive && !cameraError) {
+      startCamera();
+    }
+  }, [activeTab]);
 
   const synthesizeNode = async () => {
     setIsSynthesizing(true);
@@ -503,14 +524,16 @@ const StudySession: React.FC<StudySessionProps> = ({ subtopic, agent, onComplete
 
   return (
     <div className="fixed inset-0 bg-[#111113] z-[100] flex flex-col animate-in slide-in-from-bottom duration-500 overflow-hidden">
-      {/* Face detection warning overlay */}
-      {showFaceWarning && (
+      {/* Face detection warning overlay — only shown on video/quiz tabs */}
+      {showFaceWarning && (activeTab === 'video' || activeTab === 'quiz') && (
         <div className="fixed top-24 left-1/2 -translate-x-1/2 z-[300] animate-in fade-in slide-in-from-top-4 duration-300">
           <div className="flex items-center gap-3 px-6 py-4 bg-[#c97070] text-white rounded-2xl shadow-2xl shadow-[#c97070]/40 border border-[#c97070]">
             <AlertTriangle size={20} className="shrink-0 animate-pulse" />
             <div>
               <p className="font-bold text-sm">Face not detected!</p>
-              <p className="text-[10px] font-medium text-white/80">Please stay focused on your screen. Distraction logged.</p>
+              <p className="text-[10px] font-medium text-white/80">
+                {activeTab === 'quiz' ? 'Distraction logged. Stay focused during assessment.' : 'Please stay visible on screen.'}
+              </p>
             </div>
           </div>
         </div>
@@ -518,30 +541,51 @@ const StudySession: React.FC<StudySessionProps> = ({ subtopic, agent, onComplete
 
       <header className="h-20 border-b border-white/[0.06] flex items-center justify-between px-8 bg-[#111113]/80 backdrop-blur-xl shrink-0 relative z-20">
         <div className="flex items-center gap-5">
-          {/* Webcam circle */}
-          <div
-            onClick={() => { if (!cameraActive) startCamera(); }}
-            className={`w-12 h-12 rounded-full overflow-hidden border-2 shadow-lg shrink-0 relative ${cameraActive ? (showFaceWarning ? 'border-[#c97070] shadow-[#c97070]/30' : 'border-[#8baa6e] shadow-[#8baa6e]/20') : 'border-white/20 cursor-pointer hover:border-[#c4b998]/40'}`}
-            title={cameraActive ? 'Webcam active' : 'Click to enable camera'}
-          >
-            <video
-              ref={webcamRefCallback}
-              autoPlay
-              muted
-              playsInline
-              className="w-full h-full object-cover scale-x-[-1]"
-            />
-            {!cameraActive && (
-              <div className="absolute inset-0 bg-white/[0.04] flex items-center justify-center">
-                {cameraError
-                  ? <span className="text-[7px] font-bold text-white/40 uppercase text-center leading-tight px-1">Click to<br/>enable</span>
-                  : <div className="w-4 h-4 border-2 border-[#c4b998] border-t-transparent rounded-full animate-spin" />
-                }
+          {/* Webcam circle + monitoring badge */}
+          <div className="flex items-center gap-3">
+            <div
+              onClick={() => { if (!cameraActive) startCamera(); }}
+              className={`w-12 h-12 rounded-full overflow-hidden border-2 shadow-lg shrink-0 relative ${cameraActive ? ((activeTab === 'video' || activeTab === 'quiz') && showFaceWarning ? 'border-[#c97070] shadow-[#c97070]/30' : activeTab === 'quiz' ? 'border-[#c4b998] shadow-[#c4b998]/20 ring-2 ring-[#c4b998]/30' : 'border-[#8baa6e] shadow-[#8baa6e]/20') : 'border-white/20 cursor-pointer hover:border-[#c4b998]/40'}`}
+              title={cameraActive ? (activeTab === 'quiz' ? 'Monitoring active — Quiz mode' : 'Webcam active') : 'Click to enable camera'}
+            >
+              <video
+                ref={webcamRefCallback}
+                autoPlay
+                muted
+                playsInline
+                className="w-full h-full object-cover scale-x-[-1]"
+              />
+              {!cameraActive && (
+                <div className="absolute inset-0 bg-white/[0.04] flex items-center justify-center">
+                  {cameraError
+                    ? <span className="text-[7px] font-bold text-white/40 uppercase text-center leading-tight px-1">Click to<br/>enable</span>
+                    : <div className="w-4 h-4 border-2 border-[#c4b998] border-t-transparent rounded-full animate-spin" />
+                  }
+                </div>
+              )}
+              {showFaceWarning && cameraActive && (activeTab === 'video' || activeTab === 'quiz') && (
+                <div className="absolute inset-0 bg-[#c97070]/30 flex items-center justify-center animate-pulse">
+                  <AlertTriangle size={16} className="text-white drop-shadow" />
+                </div>
+              )}
+            </div>
+            {/* Monitoring status badge */}
+            {activeTab === 'quiz' && cameraActive && (
+              <div className="hidden sm:flex items-center gap-1.5 bg-[#c97070]/15 border border-[#c97070]/25 rounded-full px-3 py-1 animate-in fade-in duration-300">
+                <div className="w-2 h-2 rounded-full bg-[#c97070] animate-pulse" />
+                <span className="text-[9px] font-semibold text-[#c97070] uppercase tracking-wider">Monitoring</span>
               </div>
             )}
-            {showFaceWarning && cameraActive && (
-              <div className="absolute inset-0 bg-[#c97070]/30 flex items-center justify-center animate-pulse">
-                <AlertTriangle size={16} className="text-white drop-shadow" />
+            {activeTab === 'video' && cameraActive && (
+              <div className="hidden sm:flex items-center gap-1.5 bg-[#8baa6e]/10 border border-[#8baa6e]/20 rounded-full px-3 py-1">
+                <div className="w-2 h-2 rounded-full bg-[#8baa6e]" />
+                <span className="text-[9px] font-semibold text-[#8baa6e]/70 uppercase tracking-wider">Camera On</span>
+              </div>
+            )}
+            {activeTab !== 'video' && activeTab !== 'quiz' && (
+              <div className="hidden sm:flex items-center gap-1.5 bg-white/[0.04] border border-white/[0.06] rounded-full px-3 py-1">
+                <div className="w-2 h-2 rounded-full bg-white/20" />
+                <span className="text-[9px] font-semibold text-white/20 uppercase tracking-wider">Idle</span>
               </div>
             )}
           </div>
