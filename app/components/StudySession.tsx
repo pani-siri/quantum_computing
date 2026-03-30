@@ -4,7 +4,7 @@ import { SubTopic, MasteryState, ChatMessage, LearningAgent, AcademicBundle, Cog
 import { fastapiService } from '../services/fastapiService';
 import { extractNotesFeatures, extractQuizFeatures, extractVideoFeatures } from '../services/qsvmFeatureExtractor';
 import { ExternalLink, Youtube, FileText, BookOpen, GraduationCap, CheckCircle2, FileSearch, LibraryBig, Sparkles, Layers, AlertTriangle, Clock } from 'lucide-react';
-import { detectFace } from '../services/faceDetector';
+import { detectFace, type FaceDetectionResult } from '../services/faceDetector';
 
 interface StudySessionProps {
   subtopic: SubTopic;
@@ -124,7 +124,7 @@ const StudySession: React.FC<StudySessionProps> = ({ subtopic, agent, onComplete
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Face detection loop — ONLY active during 'quiz' tab
-  // Verifies human presence; counts distractions when face not detected
+  // Uses Ultra-Light-Fast-Generic-Face-Detector-1MB (ONNX) for accurate presence detection
   useEffect(() => {
     if (!cameraActive || activeTab !== 'quiz') {
       if (faceCheckRef.current) clearInterval(faceCheckRef.current);
@@ -134,14 +134,11 @@ const StudySession: React.FC<StudySessionProps> = ({ subtopic, agent, onComplete
       return;
     }
 
-    const canvas = document.createElement('canvas');
-    const ctx = canvas.getContext('2d', { willReadFrequently: true })!;
-
-    faceCheckRef.current = setInterval(() => {
+    faceCheckRef.current = setInterval(async () => {
       const video = webcamVideoRef.current;
       if (!video || video.readyState < 2) return;
 
-      const result = detectFace(video, canvas, ctx);
+      const result: FaceDetectionResult = await detectFace(video);
 
       if (!result.faceDetected) {
         consecutiveMissRef.current += 1;

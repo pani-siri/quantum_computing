@@ -1,130 +1,125 @@
 /**
- * Lightweight face detection using skin-color analysis in HSV color space.
- * No external APIs, no model files — pure pixel math.
+ * Face detection using Ultra-Light-Fast-Generic-Face-Detector-1MB
+ * https://github.com/Linzaer/Ultra-Light-Fast-Generic-Face-Detector-1MB
  *
- * Algorithm:
- * 1. Sample pixels from webcam frame
- * 2. Convert RGB → HSV
- * 3. Check if pixel falls in skin-color range
- * 4. If skin-pixel percentage > threshold → face present
- * 5. Additionally check that skin pixels form a clustered region (not scattered noise)
+ * Model: version-slim-320 (ONNX)
+ * Input:  float32 [1, 3, 240, 320]  NCHW, normalised (pixel - 127) / 128
+ * Output: scores [1, 4420, 2]  — col 0 = background, col 1 = face confidence
+ *         boxes  [1, 4420, 4]  — bounding boxes (unused for presence detection)
  */
 
-// HSV skin color thresholds (empirically tuned for webcam lighting)
-const SKIN_H_MIN = 0;
-const SKIN_H_MAX = 50;
-const SKIN_S_MIN = 0.15;
-const SKIN_S_MAX = 0.75;
-const SKIN_V_MIN = 0.20;
-const SKIN_V_MAX = 1.0;
+// Lazily loaded — keeps initial bundle small; only pulled in when quiz tab opens
+type OrtModule = typeof import('onnxruntime-web');
+let _ort: OrtModule | null = null;
 
-// Minimum percentage of skin pixels to consider a face present
-const SKIN_THRESHOLD = 0.04; // 4% of sampled pixels
-// Minimum cluster ratio — skin pixels should be concentrated, not scattered
-const CLUSTER_THRESHOLD = 0.3;
-
-function rgbToHsv(r: number, g: number, b: number): [number, number, number] {
-  r /= 255; g /= 255; b /= 255;
-  const max = Math.max(r, g, b);
-  const min = Math.min(r, g, b);
-  const d = max - min;
-  let h = 0;
-  const s = max === 0 ? 0 : d / max;
-  const v = max;
-
-  if (d !== 0) {
-    if (max === r) h = ((g - b) / d + (g < b ? 6 : 0)) * 60;
-    else if (max === g) h = ((b - r) / d + 2) * 60;
-    else h = ((r - g) / d + 4) * 60;
-  }
-
-  return [h, s, v];
+async function getOrt(): Promise<OrtModule> {
+  if (_ort) return _ort;
+  const ort = await import('onnxruntime-web');
+  // Point WASM runtime at CDN — avoids Vite bundling / copying WASM files
+  (ort.env.wasm as any).wasmPaths =
+    'https://cdn.jsdelivr.net/npm/onnxruntime-web@1.14.0/dist/';
+  _ort = ort;
+  return ort;
 }
 
-function isSkinPixel(r: number, g: number, b: number): boolean {
-  // Quick RGB pre-filter (skin is never very blue or very green without red)
-  if (r < 40 || (b > r && b > g)) return false;
-  // Uniform color check (avoid pure white/gray backgrounds)
-  const rgDiff = Math.abs(r - g);
-  if (rgDiff < 5 && Math.abs(r - b) < 5) return false;
+const MODEL_URL = '/models/face_detector.onnx';
+const INPUT_W = 320;
+const INPUT_H = 240;
+const FACE_THRESHOLD = 0.65; // confidence threshold for "face present"
 
-  const [h, s, v] = rgbToHsv(r, g, b);
-  return h >= SKIN_H_MIN && h <= SKIN_H_MAX &&
-         s >= SKIN_S_MIN && s <= SKIN_S_MAX &&
-         v >= SKIN_V_MIN && v <= SKIN_V_MAX;
+// Singleton session — loaded once, reused on every call
+let _sessionPromise: Promise<import('onnxruntime-web').InferenceSession> | null = null;
+
+async function getSession(): Promise<import('onnxruntime-web').InferenceSession> {
+  if (!_sessionPromise) {
+    _sessionPromise = (async () => {
+      const ort = await getOrt();
+      return ort.InferenceSession.create(MODEL_URL, { executionProviders: ['wasm'] });
+    })().catch(err => {
+      _sessionPromise = null;
+      throw err;
+    });
+  }
+  return _sessionPromise;
+}
+
+// Shared off-screen canvas (created once)
+let _canvas: HTMLCanvasElement | null = null;
+let _ctx: CanvasRenderingContext2D | null = null;
+
+function getCanvas(): [HTMLCanvasElement, CanvasRenderingContext2D] {
+  if (!_canvas) {
+    _canvas = document.createElement('canvas');
+    _canvas.width = INPUT_W;
+    _canvas.height = INPUT_H;
+    _ctx = _canvas.getContext('2d', { willReadFrequently: true })!;
+  }
+  return [_canvas, _ctx!];
+}
+
+/**
+ * Build NCHW Float32Array from a video frame.
+ * Normalises each channel: (pixel - 127) / 128  → range ≈ [-1, 1]
+ */
+function preprocess(video: HTMLVideoElement): Float32Array {
+  const [canvas, ctx] = getCanvas();
+  ctx.drawImage(video, 0, 0, INPUT_W, INPUT_H);
+  const { data } = ctx.getImageData(0, 0, INPUT_W, INPUT_H);
+  const pixels = INPUT_W * INPUT_H;
+  const input = new Float32Array(3 * pixels);
+
+  for (let i = 0; i < pixels; i++) {
+    input[i]              = (data[i * 4]     - 127) / 128; // R
+    input[pixels + i]     = (data[i * 4 + 1] - 127) / 128; // G
+    input[2 * pixels + i] = (data[i * 4 + 2] - 127) / 128; // B
+  }
+  return input;
 }
 
 export interface FaceDetectionResult {
   faceDetected: boolean;
-  skinPercentage: number;
-  clusterRatio: number;
+  confidence: number;   // max face confidence score (0–1)
 }
 
+// Guard against concurrent inference calls (setInterval can overlap)
+let _running = false;
+
 /**
- * Detect if a face is present in the given video element.
- * Returns synchronously after analyzing a single frame.
+ * Detect whether a human face is visible in the video frame.
+ * Loads the ONNX model on first call (~1 s), then runs in <30 ms/frame.
+ * Falls back to faceDetected=true on any error so users aren't wrongly flagged.
  */
-export function detectFace(
-  video: HTMLVideoElement,
-  canvas: HTMLCanvasElement,
-  ctx: CanvasRenderingContext2D
-): FaceDetectionResult {
-  const w = video.videoWidth || 160;
-  const h = video.videoHeight || 120;
-  canvas.width = w;
-  canvas.height = h;
-  ctx.drawImage(video, 0, 0, w, h);
+export async function detectFace(
+  video: HTMLVideoElement
+): Promise<FaceDetectionResult> {
+  if (_running) return { faceDetected: true, confidence: 1 };
+  if (!video || video.readyState < 2) return { faceDetected: true, confidence: 1 };
 
-  const imageData = ctx.getImageData(0, 0, w, h);
-  const data = imageData.data;
+  _running = true;
+  try {
+    const ort = await getOrt();
+    const session = await getSession();
+    const inputData = preprocess(video);
+    const inputTensor = new ort.Tensor('float32', inputData, [1, 3, INPUT_H, INPUT_W]);
 
-  // Sample every 4th pixel for performance (still plenty of data)
-  const step = 4;
-  let totalSampled = 0;
-  let skinCount = 0;
+    const outputs = await session.run({ input: inputTensor });
 
-  // Track skin pixel positions for cluster analysis (grid-based)
-  const gridCols = 8;
-  const gridRows = 6;
-  const cellW = w / gridCols;
-  const cellH = h / gridRows;
-  const grid = new Uint16Array(gridCols * gridRows);
-
-  for (let y = 0; y < h; y += step) {
-    for (let x = 0; x < w; x += step) {
-      const i = (y * w + x) * 4;
-      totalSampled++;
-
-      if (isSkinPixel(data[i], data[i + 1], data[i + 2])) {
-        skinCount++;
-        const gx = Math.min(Math.floor(x / cellW), gridCols - 1);
-        const gy = Math.min(Math.floor(y / cellH), gridRows - 1);
-        grid[gy * gridCols + gx]++;
-      }
+    // scores: flat Float32Array of length 1 * 4420 * 2
+    // layout: [bg0, face0, bg1, face1, ...]  (pairs per anchor)
+    const scores = outputs['scores'].data as Float32Array;
+    let maxConf = 0;
+    for (let i = 1; i < scores.length; i += 2) {
+      if (scores[i] > maxConf) maxConf = scores[i];
     }
+
+    return {
+      faceDetected: maxConf >= FACE_THRESHOLD,
+      confidence: maxConf,
+    };
+  } catch (err) {
+    console.warn('[FaceDetector]', err);
+    return { faceDetected: true, confidence: 0 }; // fail-open
+  } finally {
+    _running = false;
   }
-
-  const skinPercentage = totalSampled > 0 ? skinCount / totalSampled : 0;
-
-  // Cluster analysis: count how many grid cells have significant skin pixels
-  const minCellSkin = Math.max(1, totalSampled / (gridCols * gridRows) * 0.05);
-  let activeCells = 0;
-  let maxCellSkin = 0;
-  for (let i = 0; i < grid.length; i++) {
-    if (grid[i] > minCellSkin) activeCells++;
-    if (grid[i] > maxCellSkin) maxCellSkin = grid[i];
-  }
-
-  // Cluster ratio: skin should be concentrated in a connected region
-  // A face typically activates 4-15 cells out of 48 (8x6 grid)
-  const totalCells = gridCols * gridRows;
-  const clusterRatio = activeCells > 0 ? activeCells / totalCells : 0;
-
-  // Face detected if: enough skin pixels AND they're clustered (not scattered noise)
-  const faceDetected = skinPercentage >= SKIN_THRESHOLD &&
-                       clusterRatio >= 0.05 &&
-                       clusterRatio <= CLUSTER_THRESHOLD &&
-                       activeCells >= 3;
-
-  return { faceDetected, skinPercentage, clusterRatio };
 }
