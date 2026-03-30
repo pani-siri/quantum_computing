@@ -112,14 +112,10 @@ const StudySession: React.FC<StudySessionProps> = ({ subtopic, agent, onComplete
     };
   }, []);
 
-  // Face detection loop — only active during 'video' and 'quiz' tabs
-  // Video tab: passive monitoring (webcam shown, warnings displayed)
-  // Quiz tab: active monitoring (auto-starts camera, warnings + distraction logging)
-  // Other tabs: no monitoring at all
+  // Face detection loop — ONLY active during 'quiz' tab
+  // Verifies human presence; counts distractions when face not detected
   useEffect(() => {
-    const isMonitoredTab = activeTab === 'video' || activeTab === 'quiz';
-    if (!cameraActive || !isMonitoredTab) {
-      // Clear any existing face check when leaving monitored tabs
+    if (!cameraActive || activeTab !== 'quiz') {
       if (faceCheckRef.current) clearInterval(faceCheckRef.current);
       if (faceWarningTimeoutRef.current) clearTimeout(faceWarningTimeoutRef.current);
       setShowFaceWarning(false);
@@ -140,10 +136,7 @@ const StudySession: React.FC<StudySessionProps> = ({ subtopic, agent, onComplete
         consecutiveMissRef.current += 1;
         if (consecutiveMissRef.current >= 2) {
           setShowFaceWarning(true);
-          // Only count distractions during quiz
-          if (activeTab === 'quiz') {
-            setDistractions(d => d + 1);
-          }
+          setDistractions(d => d + 1);
           clearTimeout(faceWarningTimeoutRef.current);
           faceWarningTimeoutRef.current = setTimeout(() => setShowFaceWarning(false), 5000);
         }
@@ -347,6 +340,23 @@ const StudySession: React.FC<StudySessionProps> = ({ subtopic, agent, onComplete
     } finally {
       setIsRegenerating(false);
     }
+  };
+
+  // Robust answer matching: handles exact text, letter-only answers (A/B/C/D),
+  // letter+period (A.), trimmed whitespace, and case differences.
+  const matchesAnswer = (selected: string | null, answer: string, options: string[]): boolean => {
+    if (!selected) return false;
+    const norm = (s: string) => s.trim().toLowerCase();
+    if (norm(selected) === norm(answer)) return true;
+    // Answer is a bare letter or letter+punctuation e.g. "A", "B.", "C)"
+    const letterOnly = answer.trim().match(/^([A-Da-d])[.):,]?$/);
+    if (letterOnly) {
+      const idx = letterOnly[1].toUpperCase().charCodeAt(0) - 65;
+      return norm(options[idx] ?? '') === norm(selected);
+    }
+    // Strip any leading "A) " / "A. " prefix from both sides
+    const strip = (s: string) => norm(s).replace(/^[a-d][.):\s]+/, '');
+    return strip(selected) === strip(answer);
   };
 
   const finalizeSession = async () => {
@@ -884,8 +894,9 @@ const StudySession: React.FC<StudySessionProps> = ({ subtopic, agent, onComplete
                         <div className="space-y-3">
                            {activeQuizSet[currentQuizIndex]?.options.map((o, idx) => {
                              const isSelected = selectedQuizOption === o;
-                             const isCorrectAnswer = showAnswer && o === activeQuizSet[currentQuizIndex]?.answer;
-                             const isWrongSelected = showAnswer && isSelected && o !== activeQuizSet[currentQuizIndex]?.answer;
+                             const currentQ = activeQuizSet[currentQuizIndex];
+                             const isCorrectAnswer = showAnswer && matchesAnswer(o, currentQ?.answer ?? '', currentQ?.options ?? []);
+                             const isWrongSelected = showAnswer && isSelected && !matchesAnswer(o, currentQ?.answer ?? '', currentQ?.options ?? []);
                              return (
                                <button
                                  key={idx}
@@ -922,14 +933,14 @@ const StudySession: React.FC<StudySessionProps> = ({ subtopic, agent, onComplete
                       )}
                       {showAnswer && (
                         <div className="space-y-6 animate-in slide-in-from-bottom-4 duration-300">
-                          <div className={`p-6 rounded-xl border ${selectedQuizOption === activeQuizSet[currentQuizIndex]?.answer ? 'bg-[#8baa6e]/10 border-[#8baa6e]/30 text-[#8baa6e]' : 'bg-[#c97070]/10 border-[#c97070]/30 text-[#c97070]'}`}>
-                            <p className="font-bold text-lg mb-2">{selectedQuizOption === activeQuizSet[currentQuizIndex]?.answer ? '✓ Correct' : '✗ Incorrect'}</p>
+                          <div className={`p-6 rounded-xl border ${matchesAnswer(selectedQuizOption, activeQuizSet[currentQuizIndex]?.answer ?? '', activeQuizSet[currentQuizIndex]?.options ?? []) ? 'bg-[#8baa6e]/10 border-[#8baa6e]/30 text-[#8baa6e]' : 'bg-[#c97070]/10 border-[#c97070]/30 text-[#c97070]'}`}>
+                            <p className="font-bold text-lg mb-2">{matchesAnswer(selectedQuizOption, activeQuizSet[currentQuizIndex]?.answer ?? '', activeQuizSet[currentQuizIndex]?.options ?? []) ? '✓ Correct' : '✗ Incorrect'}</p>
                             <p className="text-sm font-medium leading-relaxed text-white/60">{activeQuizSet[currentQuizIndex]?.explanation || ''}</p>
                           </div>
                           <button onClick={() => {
                             const currentQ = activeQuizSet[currentQuizIndex];
                             if (!currentQ) return;
-                            const isCorrect = selectedQuizOption === currentQ.answer;
+                            const isCorrect = matchesAnswer(selectedQuizOption, currentQ.answer, currentQ.options);
                             if (isCorrect) setQuizScore(s => s + 1);
 
                             if (!isCorrect) {
