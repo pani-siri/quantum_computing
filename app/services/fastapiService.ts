@@ -1,6 +1,5 @@
 import { optimizeScheduleQAOA } from "./quantumSimulator";
-import { LearningAgent, Task, ScheduleEvent, User, ChatMessage, Difficulty, AcademicBundle, CognitiveLoadState, MasteryState } from "../types";
-import { BehavioralMetrics } from "./quantumSimulator";
+import { LearningAgent, Task, ScheduleEvent, User, ChatMessage, Difficulty, AcademicBundle, CognitiveLoadState, MasteryState, BehavioralMetrics } from "../types";
 
 type ApiResponse<T> = T & { error?: string };
 

@@ -62,35 +62,7 @@ export const extractNotesFeatures = (args: {
 };
 
 /**
- * B) Practice question (index = idx)
- * - error_rate proxy: reveal count vs max expected reveals.
- * - retries: reveal_count - 1.
- * - interaction_frequency: reveals per minute.
- */
-export const extractPracticeFeatures = (args: {
-  response_time_sec: number;
-  reveal_count: number;
-  max_expected_reveals: number;
-}): BehavioralMetrics => {
-  const responseTime = Math.max(1, Math.round(Number(args.response_time_sec) || 0));
-  const reveals = Math.max(0, Math.round(Number(args.reveal_count) || 0));
-  const maxReveals = Math.max(1, Number(args.max_expected_reveals) || 1);
-
-  const errorRate = clamp01(safeDiv(reveals, maxReveals));
-  const retries = Math.max(0, reveals - 1);
-  const interactionFrequency = safeDiv(reveals, responseTime) * 60;
-
-  return buildQSVMFeatures({
-    time_spent: responseTime,
-    response_time: responseTime,
-    error_rate: errorRate,
-    retries,
-    interaction_frequency: interactionFrequency
-  });
-};
-
-/**
- * C) Quiz question (index = quizIndex)
+ * B) Quiz question (index = quizIndex)
  * - error_rate: wrong_attempts / total_attempts.
  * - retries: wrong_attempts.
  * - interaction_frequency: total attempts per minute.

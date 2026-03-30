@@ -573,5 +573,30 @@
       }
     ],
     "created_at": "2026-03-29T20:16:19.981Z"
+  },
+  {
+    "id": 1774819262092,
+    "user_id": "1a13e598df0eb0f9518916a9",
+    "subject": "calculus",
+    "topic": "Review: Limits Basics",
+    "version": 1,
+    "videos": [
+      {
+        "title": "Calculus - The limit of a function",
+        "url": "https://www.youtube.com/watch?v=h_Rf_2OeSJU",
+        "description": "This video covers the limit of a function. The focus is on the behavior of a function and what it is approaching. Remember this is ..."
+      },
+      {
+        "title": "3 WAYS TO SOLVE LIMITS",
+        "url": "https://www.youtube.com/watch?v=PuVuNRqsNW0",
+        "description": "Solving limits is a key component of any Calculus 1 course and when the x value is approaching a finite number (i.e. not infinity), ..."
+      },
+      {
+        "title": "Limits and Limit Laws in Calculus",
+        "url": "https://www.youtube.com/watch?v=wK8WuTEc0ns",
+        "description": "In introducing the concept of differentiation, we investigated the behavior of some parameter in the limit of something else ..."
+      }
+    ],
+    "created_at": "2026-03-29T21:21:02.092Z"
   }
 ]

@@ -2,7 +2,7 @@
 import React, { useState } from 'react';
 import { User, LearningAgent } from '../types';
 import { firebaseService } from '../services/firebaseService';
-import { LogOut, BookOpen, Clock, CheckCircle2, Target, Edit3, TrendingUp, Award } from 'lucide-react';
+import { LogOut, BookOpen, Clock, CheckCircle2, Target, Edit3 } from 'lucide-react';
 
 interface ProfileProps {
   user: User;

@@ -525,7 +525,12 @@ const StudySession: React.FC<StudySessionProps> = ({ subtopic, agent, onComplete
           >
             Start Session
           </button>
-          <button onClick={onExit} className="mt-6 text-sm font-medium text-white/30 hover:text-white/60 transition-colors">Go Back</button>
+          <button
+            onClick={onExit}
+            className="mt-5 px-8 py-3 rounded-xl text-sm font-semibold text-white/40 border border-white/[0.08] bg-white/[0.02] hover:bg-white/[0.05] hover:text-white/60 hover:border-white/[0.14] active:scale-95 transition-all"
+          >
+            ← Cancel
+          </button>
         </div>
       </div>
     );
@@ -539,6 +544,12 @@ const StudySession: React.FC<StudySessionProps> = ({ subtopic, agent, onComplete
         <div className="w-16 h-16 border-4 border-[#c4b998] border-t-transparent rounded-full animate-spin mb-8"></div>
         <h2 className="text-3xl font-bold text-[#e8e4dc] tracking-tight">Sourcing Academic Bundle...</h2>
         <p className="text-white/30 font-medium mt-3 max-w-sm">Gathering readable textbooks, PDF notes, and topic-specific resources from global libraries.</p>
+        <button
+          onClick={onExit}
+          className="mt-10 px-8 py-3 rounded-xl text-sm font-semibold text-white/30 border border-white/[0.07] bg-white/[0.02] hover:bg-white/[0.05] hover:text-white/50 active:scale-95 transition-all"
+        >
+          ← Cancel
+        </button>
       </div>
     );
   }

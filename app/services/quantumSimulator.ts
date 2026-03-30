@@ -1,5 +1,5 @@
 
-import { BehavioralMetrics, CognitiveLoadState, MasteryState, ScheduleEvent, Task } from "../types";
+import { BehavioralMetrics, CognitiveLoadState, ScheduleEvent, Task } from "../types";
 
 export type { BehavioralMetrics };
 
