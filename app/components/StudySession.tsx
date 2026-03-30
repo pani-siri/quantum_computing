@@ -4,7 +4,7 @@ import { SubTopic, MasteryState, ChatMessage, LearningAgent, AcademicBundle, Cog
 import { fastapiService } from '../services/fastapiService';
 import { extractNotesFeatures, extractQuizFeatures, extractVideoFeatures } from '../services/qsvmFeatureExtractor';
 import { ExternalLink, Youtube, FileText, BookOpen, GraduationCap, CheckCircle2, FileSearch, LibraryBig, Sparkles, Layers, AlertTriangle, Clock } from 'lucide-react';
-import { detectFace, type FaceDetectionResult } from '../services/faceDetector';
+import { detectFace, preloadModel, type FaceDetectionResult } from '../services/faceDetector';
 
 interface StudySessionProps {
   subtopic: SubTopic;
@@ -17,7 +17,8 @@ interface StudySessionProps {
 const StudySession: React.FC<StudySessionProps> = ({ subtopic, agent, onComplete, onExit, onUpdateChat }) => {
   const [activeTab, setActiveTab] = useState<'video' | 'notes' | 'materials' | 'flashcards' | 'quiz' | 'chat'>('video');
   const [flippedCards, setFlippedCards] = useState<Set<number>>(new Set());
-  const [timeSpent, setTimeSpent] = useState(0);
+  // timeSpent is only needed at finalization — keep as ref to avoid 1 re-render/sec
+  const timeSpentRef = useRef(0);
   const [focusTime, setFocusTime] = useState(0);
   const [distractions, setDistractions] = useState(0);
   
@@ -29,7 +30,6 @@ const StudySession: React.FC<StudySessionProps> = ({ subtopic, agent, onComplete
 
   // Quiz State
   const [quizStarted, setQuizStarted] = useState(false);
-  const [userDesiredQuestions, setUserDesiredQuestions] = useState(10);
   const [activeQuizSet, setActiveQuizSet] = useState<QuizItem[]>([]);
   const [currentQuizIndex, setCurrentQuizIndex] = useState(0);
   const [selectedQuizOption, setSelectedQuizOption] = useState<string | null>(null);
@@ -161,13 +161,15 @@ const StudySession: React.FC<StudySessionProps> = ({ subtopic, agent, onComplete
   }, [cameraActive, activeTab]);
 
   // Camera lifecycle: ON only during quiz tab, OFF everywhere else
+  // Also preload the ONNX face detector model so it's ready before the first check fires
   useEffect(() => {
     if (activeTab === 'quiz') {
+      preloadModel(); // warm up ONNX runtime + model in background
       if (!cameraActive && !cameraError) startCamera();
     } else {
       if (cameraActive) stopCamera();
     }
-  }, [activeTab]);
+  }, [activeTab]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const synthesizeNode = async () => {
     setIsSynthesizing(true);
@@ -191,7 +193,7 @@ const StudySession: React.FC<StudySessionProps> = ({ subtopic, agent, onComplete
 
   useEffect(() => {
     timerRef.current = setInterval(() => {
-      setTimeSpent(prev => prev + 1);
+      timeSpentRef.current += 1;
       if (document.hasFocus()) setFocusTime(f => f + 1);
     }, 1000);
 
@@ -377,11 +379,11 @@ const StudySession: React.FC<StudySessionProps> = ({ subtopic, agent, onComplete
     const accuracy = quizScore / attempts;
     const errorRate = Math.max(0, Math.min(1, 1 - accuracy));
     const metrics: BehavioralMetrics = {
-      time_spent: timeSpent,
+      time_spent: timeSpentRef.current,
       response_time: 0,
       error_rate: errorRate,
       retries: 0,
-      interaction_frequency: agent.chat_history.length / Math.max(1, timeSpent / 60)
+      interaction_frequency: agent.chat_history.length / Math.max(1, timeSpentRef.current / 60)
     };
 
     let loadState: CognitiveLoadState = CognitiveLoadState.OPTIMAL;
@@ -504,7 +506,7 @@ const StudySession: React.FC<StudySessionProps> = ({ subtopic, agent, onComplete
       }
     }, 1000);
     return () => clearInterval(interval);
-  }, [activeTab, agent.chat_history.length, focusTime, timeSpent]);
+  }, [activeTab]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Gate: user must click to grant camera + enter fullscreen
   if (!sessionStarted) {

@@ -30,6 +30,11 @@ const FACE_THRESHOLD = 0.65; // confidence threshold for "face present"
 // Singleton session — loaded once, reused on every call
 let _sessionPromise: Promise<import('onnxruntime-web').InferenceSession> | null = null;
 
+/** Call this as soon as the quiz tab opens to warm up the WASM runtime + model in the background. */
+export function preloadModel(): void {
+  getSession().catch(() => {});
+}
+
 async function getSession(): Promise<import('onnxruntime-web').InferenceSession> {
   if (!_sessionPromise) {
     _sessionPromise = (async () => {
