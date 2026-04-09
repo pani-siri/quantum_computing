@@ -598,5 +598,30 @@
       }
     ],
     "created_at": "2026-03-29T21:21:02.092Z"
+  },
+  {
+    "id": 1775716232370,
+    "user_id": "1a13e598df0eb0f9518916a9",
+    "subject": "calculus",
+    "topic": "Derivative Definition",
+    "version": 1,
+    "videos": [
+      {
+        "title": "What is a derivative?",
+        "url": "https://www.youtube.com/watch?v=wUZcIYx-7a4",
+        "description": "What is a derivative? Learn what a derivative is, how to find the derivative using the difference quotient, and how to use the ..."
+      },
+      {
+        "title": "Calculus | Derivatives of a Function by Definition | Definition of the Derivative | Hindi/Urdu",
+        "url": "https://www.youtube.com/watch?v=2Biy3rrkB3M",
+        "description": "Derivatives of a function measures its instantaneous rate of change. It also tells us the slope of a tangent line at a point on the ..."
+      },
+      {
+        "title": "What Is A Derivative(HINDI)",
+        "url": "https://www.youtube.com/watch?v=qW44hd1wlK4",
+        "description": "In this video I will be talking about the concept of derivative what is it essentialy? Deriving functions is easy once you get the basic ..."
+      }
+    ],
+    "created_at": "2026-04-09T06:30:32.370Z"
   }
 ]

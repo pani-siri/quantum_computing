@@ -136,13 +136,15 @@ router.post("/api/ai/content", async (req, res) => {
     async function genPart(label, userPrompt) {
       const t = Date.now();
       process.stdout.write(`\x1b[34m  [content] generating ${label}...\x1b[0m\n`);
+      let raw = "";
       try {
-        const raw = await callOpenRouter([sys, { role: "user", content: userPrompt }], llmOpts);
+        raw = await callOpenRouter([sys, { role: "user", content: userPrompt }], llmOpts);
         const parsed = stripJson(raw);
         process.stdout.write(`\x1b[32m  [content] ${label} ✓ (${Date.now() - t}ms)\x1b[0m\n`);
         return parsed;
       } catch (e) {
         process.stderr.write(`\x1b[31m  [content] ${label} ✗ (${Date.now() - t}ms): ${e?.message}\x1b[0m\n`);
+        process.stderr.write(`\x1b[33m  [raw] ${raw.slice(0, 500)}\x1b[0m\n`);
         return null;
       }
     }

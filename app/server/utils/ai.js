@@ -263,7 +263,13 @@ export async function rankYouTubeCandidates(topicText, candidates, opts) {
 // ── JSON parsing ──────────────────────────────────────────────────────────────
 export function stripJson(text) {
   const raw = String(text || "").trim();
-  const fenced = raw.replace(/^```(?:json)?\s*/i, "").replace(/\s*```$/i, "").trim();
+  let fenced = raw;
+  const match = raw.match(/```(?:json)?\s*([\s\S]*?)```/i);
+  if (match && match[1]) {
+    fenced = match[1].trim();
+  } else {
+    fenced = raw.replace(/^```(?:json)?\s*/i, "").replace(/\s*```$/i, "").trim();
+  }
   const extractFirstJson = (input) => {
     const s = String(input || ""), start = s.search(/[\[{]/);
     if (start === -1) return null;
