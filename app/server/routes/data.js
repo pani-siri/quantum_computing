@@ -1,6 +1,7 @@
 import { Router } from "express";
 import { Agent, TaskDoc, Schedule, Analytics } from "../models.js";
 import { getReminderPrefs, setReminderPrefs, sendTestReminder } from "../services/reminder.js";
+import { extractGmailDeadlines } from "../services/gmailExtractor.js";
 
 const router = Router();
 
@@ -118,6 +119,20 @@ router.get("/api/data/test-reminder", async (req, res) => {
     const sent = await sendTestReminder(email, name);
     return res.json({ ok: sent, message: sent ? `Test reminder sent to ${email}` : "Failed to send — check server logs" });
   } catch (err) { return res.status(500).json({ error: err?.message || "Failed" }); }
+});
+
+// ── Gmail Deadline Extraction ────────────────────────────────────────────────
+router.get("/api/data/gmail-deadlines", async (req, res) => {
+  try {
+    const deadlines = await extractGmailDeadlines();
+    return res.json({ ok: true, deadlines });
+  } catch (err) {
+    console.error("[GMAIL] Extraction failed:", err?.message || err);
+    return res.status(500).json({ 
+      error: err?.message || "Failed to extract Gmail deadlines",
+      hint: "Ensure OTP_EMAIL_USER and OTP_EMAIL_APP_PASSWORD are set and IMAP is enabled in Gmail settings."
+    });
+  }
 });
 
 export default router;

@@ -1,8 +1,19 @@
 
 import React, { useState, useMemo, useEffect } from 'react';
 import { Task, ScheduleEvent, LearningAgent, User } from '../types';
-import { Clock, Settings2, Bell, BellOff, ChevronRight, Calendar } from 'lucide-react';
+import { Clock, Settings2, Bell, BellOff, ChevronRight, Calendar, Mail, Loader2, CheckCircle2, AlertTriangle, X, Plus } from 'lucide-react';
 import { firebaseService } from '../services/firebaseService';
+
+interface GmailDeadline {
+  title: string;
+  deadline: string;
+  priority: 'high' | 'medium' | 'low';
+  source: string;
+  from: string;
+  emailDate: string;
+  extractedDateStr: string;
+  selected?: boolean;
+}
 
 interface PlannerProps {
   tasks: Task[];
@@ -11,9 +22,10 @@ interface PlannerProps {
   currentUser: User | null;
   onStartSession: (agentId: string, subtopicId: string) => void;
   onUpdateSchedule: (updated: ScheduleEvent[]) => void;
+  onUpdateTasks: (updated: Task[]) => void;
 }
 
-const Planner: React.FC<PlannerProps> = ({ tasks, schedule, agents, currentUser, onStartSession, onUpdateSchedule }) => {
+const Planner: React.FC<PlannerProps> = ({ tasks, schedule, agents, currentUser, onStartSession, onUpdateSchedule, onUpdateTasks }) => {
   const [selectedDate, setSelectedDate] = useState<Date>(() => {
     const d = new Date();
     d.setHours(0, 0, 0, 0);
@@ -41,6 +53,14 @@ const Planner: React.FC<PlannerProps> = ({ tasks, schedule, agents, currentUser,
   const [reminderMinutes, setReminderMinutes] = useState(60);
   const [reminderSaving, setReminderSaving] = useState(false);
 
+  // Gmail extraction state
+  const [showGmailModal, setShowGmailModal] = useState(false);
+  const [gmailLoading, setGmailLoading] = useState(false);
+  const [gmailError, setGmailError] = useState<string | null>(null);
+  const [gmailDeadlines, setGmailDeadlines] = useState<GmailDeadline[]>([]);
+  const [gmailAdding, setGmailAdding] = useState(false);
+  const [gmailSuccess, setGmailSuccess] = useState(false);
+
   useEffect(() => {
     if (currentUser?.uid) {
       firebaseService.getReminderPrefs(currentUser.uid).then(prefs => {
@@ -61,6 +81,98 @@ const Planner: React.FC<PlannerProps> = ({ tasks, schedule, agents, currentUser,
       console.error('Failed to save reminder prefs:', e);
     } finally {
       setReminderSaving(false);
+    }
+  };
+
+  // ── Gmail Extraction Handler ─────────────────────────────────────────────
+  const handleExtractGmail = async () => {
+    setShowGmailModal(true);
+    setGmailLoading(true);
+    setGmailError(null);
+    setGmailDeadlines([]);
+    setGmailSuccess(false);
+
+    try {
+      const deadlines = await firebaseService.extractGmailDeadlines();
+      
+      // Filter out deadlines that are already past
+      const now = new Date();
+      const futureDeadlines = deadlines.filter(d => new Date(d.deadline) > now);
+      
+      // Mark all as selected by default
+      setGmailDeadlines(futureDeadlines.map(d => ({ ...d, selected: true })));
+      
+      if (futureDeadlines.length === 0 && deadlines.length > 0) {
+        setGmailError("Found deadlines in emails, but they're all in the past.");
+      } else if (futureDeadlines.length === 0) {
+        setGmailError("No deadline-related emails found in the last 30 days.");
+      }
+    } catch (err: any) {
+      setGmailError(err.message || "Failed to connect to Gmail. Check server configuration.");
+    } finally {
+      setGmailLoading(false);
+    }
+  };
+
+  const toggleDeadlineSelection = (idx: number) => {
+    setGmailDeadlines(prev => prev.map((d, i) => i === idx ? { ...d, selected: !d.selected } : d));
+  };
+
+  const handleAddSelectedDeadlines = async () => {
+    if (!currentUser?.uid) return;
+    const selected = gmailDeadlines.filter(d => d.selected);
+    if (selected.length === 0) return;
+
+    setGmailAdding(true);
+    try {
+      // Create task entries
+      const newTasks: Task[] = selected.map(d => ({
+        id: `gmail_${Date.now()}_${Math.random().toString(36).substr(2, 6)}`,
+        user_id: currentUser!.uid,
+        title: d.title,
+        deadline: d.deadline,
+        priority: d.priority,
+        source: 'Email' as const
+      }));
+
+      // Create schedule events for each deadline
+      const newEvents: ScheduleEvent[] = selected.map(d => {
+        const deadlineDate = new Date(d.deadline);
+        deadlineDate.setHours(23, 59, 0, 0);
+        const startDate = new Date(deadlineDate);
+        startDate.setHours(deadlineDate.getHours() - 1);
+        
+        return {
+          id: `gmail_evt_${Date.now()}_${Math.random().toString(36).substr(2, 6)}`,
+          user_id: currentUser!.uid,
+          title: `📧 Deadline: ${d.title}`,
+          start_time: startDate.toISOString(),
+          end_time: deadlineDate.toISOString(),
+          type: 'deadline' as const
+        };
+      });
+
+      // Save tasks
+      const updatedTasks = [...tasks, ...newTasks];
+      await firebaseService.saveTasks(currentUser!.uid, updatedTasks);
+      onUpdateTasks(updatedTasks);
+      
+      // Update schedule
+      const updatedSchedule = [...schedule, ...newEvents];
+      onUpdateSchedule(updatedSchedule);
+
+      setGmailSuccess(true);
+      
+      // Auto-close after 2 seconds
+      setTimeout(() => {
+        setShowGmailModal(false);
+        setGmailSuccess(false);
+        setGmailDeadlines([]);
+      }, 2000);
+    } catch (err: any) {
+      setGmailError(err.message || "Failed to add deadlines to scheduler.");
+    } finally {
+      setGmailAdding(false);
     }
   };
 
@@ -123,6 +235,8 @@ const Planner: React.FC<PlannerProps> = ({ tasks, schedule, agents, currentUser,
 
   const inputClass = "w-full p-3.5 rounded-xl bg-white/[0.04] border border-white/[0.08] text-[#e8e4dc] font-medium text-sm outline-none focus:border-[#c4b998]/40 transition-colors";
 
+  const selectedCount = gmailDeadlines.filter(d => d.selected).length;
+
   return (
     <div className="flex flex-col h-full animate-in fade-in duration-500 p-6 md:p-10 max-w-7xl mx-auto w-full">
 
@@ -132,18 +246,235 @@ const Planner: React.FC<PlannerProps> = ({ tasks, schedule, agents, currentUser,
           <h2 className="text-3xl md:text-4xl font-bold text-[#e8e4dc] tracking-tight">Schedule</h2>
           <p className="text-sm md:text-base text-white/30 mt-1">{selectedDate.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })}</p>
         </div>
-        <button
-          onClick={() => setShowScheduler(!showScheduler)}
-          className={`flex items-center gap-2.5 px-5 py-3 rounded-xl text-sm font-semibold transition-all border ${
-            showScheduler
-              ? 'bg-[#c4b998] text-[#111113] border-transparent shadow-lg shadow-[#c4b998]/15'
-              : 'bg-white/[0.04] text-white/50 border-white/[0.08] hover:bg-white/[0.08] hover:text-[#e8e4dc]'
-          }`}
-        >
-          <Settings2 size={16} />
-          Settings
-        </button>
+        <div className="flex items-center gap-3">
+          {/* Gmail Extraction Button */}
+          <button
+            id="gmail-extract-btn"
+            onClick={handleExtractGmail}
+            className="flex items-center gap-2.5 px-5 py-3 rounded-xl text-sm font-semibold transition-all border bg-gradient-to-r from-[#ea4335]/10 to-[#fbbc05]/10 text-[#ea4335] border-[#ea4335]/20 hover:from-[#ea4335]/20 hover:to-[#fbbc05]/20 hover:border-[#ea4335]/30 hover:shadow-lg hover:shadow-[#ea4335]/5"
+          >
+            <Mail size={16} />
+            <span className="hidden sm:inline">Gmail Deadlines</span>
+            <span className="sm:hidden">Gmail</span>
+          </button>
+          <button
+            onClick={() => setShowScheduler(!showScheduler)}
+            className={`flex items-center gap-2.5 px-5 py-3 rounded-xl text-sm font-semibold transition-all border ${
+              showScheduler
+                ? 'bg-[#c4b998] text-[#111113] border-transparent shadow-lg shadow-[#c4b998]/15'
+                : 'bg-white/[0.04] text-white/50 border-white/[0.08] hover:bg-white/[0.08] hover:text-[#e8e4dc]'
+            }`}
+          >
+            <Settings2 size={16} />
+            Settings
+          </button>
+        </div>
       </div>
+
+      {/* ── Gmail Extraction Modal ─────────────────────────────── */}
+      {showGmailModal && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4" onClick={() => !gmailLoading && !gmailAdding && setShowGmailModal(false)}>
+          {/* Backdrop */}
+          <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" />
+          
+          {/* Modal */}
+          <div 
+            className="relative w-full max-w-2xl max-h-[85vh] bg-[#1a1a1e] rounded-2xl border border-white/[0.08] shadow-2xl shadow-black/60 overflow-hidden flex flex-col animate-in zoom-in-95 fade-in duration-300"
+            onClick={e => e.stopPropagation()}
+          >
+            {/* Modal Header */}
+            <div className="p-6 pb-4 border-b border-white/[0.06] flex-shrink-0">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-[#ea4335]/15 to-[#fbbc05]/15 border border-[#ea4335]/20 flex items-center justify-center">
+                    <Mail size={20} className="text-[#ea4335]" />
+                  </div>
+                  <div>
+                    <h3 className="text-lg font-bold text-[#e8e4dc]">Gmail Deadline Extraction</h3>
+                    <p className="text-xs text-white/30 mt-0.5">Scanning recent emails for deadlines</p>
+                  </div>
+                </div>
+                <button 
+                  onClick={() => !gmailLoading && !gmailAdding && setShowGmailModal(false)}
+                  className="w-8 h-8 rounded-lg bg-white/[0.04] border border-white/[0.08] flex items-center justify-center text-white/40 hover:text-white/70 hover:bg-white/[0.08] transition-all"
+                >
+                  <X size={16} />
+                </button>
+              </div>
+            </div>
+
+            {/* Modal Body */}
+            <div className="flex-1 overflow-y-auto p-6">
+              {/* Loading State */}
+              {gmailLoading && (
+                <div className="flex flex-col items-center justify-center py-16 space-y-5">
+                  <div className="relative">
+                    <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-[#ea4335]/10 to-[#4285f4]/10 border border-[#ea4335]/15 flex items-center justify-center">
+                      <Loader2 size={28} className="text-[#ea4335] animate-spin" />
+                    </div>
+                    <div className="absolute -top-1 -right-1 w-4 h-4 bg-[#fbbc05] rounded-full animate-pulse" />
+                  </div>
+                  <div className="text-center">
+                    <p className="text-base font-semibold text-[#e8e4dc]">Scanning your inbox...</p>
+                    <p className="text-sm text-white/30 mt-1">Checking last 30 days for deadlines</p>
+                  </div>
+                  {/* Animated progress dots */}
+                  <div className="flex gap-1.5">
+                    {[0, 1, 2, 3, 4].map(i => (
+                      <div 
+                        key={i} 
+                        className="w-2 h-2 rounded-full bg-[#ea4335]/40"
+                        style={{ animation: `pulse 1.5s ease-in-out ${i * 0.2}s infinite` }}
+                      />
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Success State */}
+              {gmailSuccess && (
+                <div className="flex flex-col items-center justify-center py-16 space-y-4 animate-in zoom-in-95 duration-300">
+                  <div className="w-16 h-16 rounded-2xl bg-[#8baa6e]/10 border border-[#8baa6e]/20 flex items-center justify-center">
+                    <CheckCircle2 size={32} className="text-[#8baa6e]" />
+                  </div>
+                  <div className="text-center">
+                    <p className="text-lg font-bold text-[#e8e4dc]">Deadlines Added!</p>
+                    <p className="text-sm text-white/30 mt-1">{selectedCount} deadline{selectedCount !== 1 ? 's' : ''} added to your scheduler</p>
+                  </div>
+                </div>
+              )}
+
+              {/* Error State */}
+              {!gmailLoading && gmailError && gmailDeadlines.length === 0 && (
+                <div className="flex flex-col items-center justify-center py-16 space-y-4">
+                  <div className="w-16 h-16 rounded-2xl bg-[#c97070]/10 border border-[#c97070]/15 flex items-center justify-center">
+                    <AlertTriangle size={28} className="text-[#c97070]" />
+                  </div>
+                  <div className="text-center max-w-sm">
+                    <p className="text-base font-semibold text-[#e8e4dc]">No Deadlines Found</p>
+                    <p className="text-sm text-white/30 mt-2">{gmailError}</p>
+                  </div>
+                  <button
+                    onClick={handleExtractGmail}
+                    className="mt-2 px-5 py-2.5 rounded-xl bg-white/[0.04] border border-white/[0.08] text-sm font-medium text-white/50 hover:bg-white/[0.08] hover:text-[#e8e4dc] transition-all"
+                  >
+                    Try Again
+                  </button>
+                </div>
+              )}
+
+              {/* Results */}
+              {!gmailLoading && !gmailSuccess && gmailDeadlines.length > 0 && (
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between mb-4">
+                    <p className="text-sm text-white/40">
+                      <span className="text-[#e8e4dc] font-semibold">{gmailDeadlines.length}</span> deadline{gmailDeadlines.length !== 1 ? 's' : ''} found
+                    </p>
+                    <button 
+                      onClick={() => setGmailDeadlines(prev => prev.map(d => ({ ...d, selected: !prev.every(x => x.selected) })))}
+                      className="text-xs font-medium text-[#c4b998]/70 hover:text-[#c4b998] transition-colors"
+                    >
+                      {gmailDeadlines.every(d => d.selected) ? 'Deselect All' : 'Select All'}
+                    </button>
+                  </div>
+
+                  {gmailDeadlines.map((deadline, idx) => {
+                    const deadlineDate = new Date(deadline.deadline);
+                    const daysUntil = Math.ceil((deadlineDate.getTime() - Date.now()) / (1000 * 60 * 60 * 24));
+                    const isUrgent = daysUntil <= 3;
+                    
+                    return (
+                      <button
+                        key={idx}
+                        onClick={() => toggleDeadlineSelection(idx)}
+                        className={`w-full text-left p-4 rounded-xl border transition-all duration-200 ${
+                          deadline.selected
+                            ? 'bg-[#c4b998]/[0.06] border-[#c4b998]/20'
+                            : 'bg-white/[0.02] border-white/[0.06] opacity-60'
+                        } hover:bg-white/[0.06]`}
+                      >
+                        <div className="flex items-start gap-3.5">
+                          {/* Checkbox */}
+                          <div className={`w-5 h-5 mt-0.5 rounded-md border-2 flex items-center justify-center flex-shrink-0 transition-all ${
+                            deadline.selected 
+                              ? 'bg-[#c4b998] border-[#c4b998]' 
+                              : 'border-white/20 bg-transparent'
+                          }`}>
+                            {deadline.selected && (
+                              <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
+                                <path d="M2 6L5 9L10 3" stroke="#111113" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                              </svg>
+                            )}
+                          </div>
+
+                          {/* Content */}
+                          <div className="flex-1 min-w-0">
+                            <p className="text-sm font-semibold text-[#e8e4dc] leading-snug truncate">{deadline.title}</p>
+                            <div className="flex items-center gap-2 mt-2 flex-wrap">
+                              <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-md ${
+                                deadline.priority === 'high' 
+                                  ? 'bg-[#c97070]/10 text-[#c97070] border border-[#c97070]/15'
+                                  : deadline.priority === 'medium'
+                                  ? 'bg-[#c4b998]/10 text-[#c4b998] border border-[#c4b998]/15'
+                                  : 'bg-white/[0.04] text-white/40 border border-white/[0.06]'
+                              }`}>
+                                {deadline.priority}
+                              </span>
+                              <span className="text-[10px] text-white/30">
+                                📅 {deadlineDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                              </span>
+                              {isUrgent && (
+                                <span className="text-[10px] font-semibold text-[#c97070] bg-[#c97070]/10 px-2 py-0.5 rounded-md border border-[#c97070]/15">
+                                  {daysUntil <= 0 ? 'TODAY!' : `${daysUntil}d left`}
+                                </span>
+                              )}
+                            </div>
+                            <p className="text-[10px] text-white/20 mt-1.5 truncate">From: {deadline.from}</p>
+                          </div>
+                        </div>
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+
+            {/* Modal Footer */}
+            {!gmailLoading && !gmailSuccess && gmailDeadlines.length > 0 && (
+              <div className="p-6 pt-4 border-t border-white/[0.06] flex-shrink-0">
+                <div className="flex items-center justify-between gap-4">
+                  <p className="text-xs text-white/30">
+                    {selectedCount} of {gmailDeadlines.length} selected
+                  </p>
+                  <div className="flex gap-3">
+                    <button
+                      onClick={() => setShowGmailModal(false)}
+                      className="px-5 py-2.5 rounded-xl bg-white/[0.04] border border-white/[0.08] text-sm font-medium text-white/50 hover:bg-white/[0.08] hover:text-[#e8e4dc] transition-all"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      onClick={handleAddSelectedDeadlines}
+                      disabled={selectedCount === 0 || gmailAdding}
+                      className={`px-6 py-2.5 rounded-xl text-sm font-semibold transition-all flex items-center gap-2 ${
+                        selectedCount > 0 && !gmailAdding
+                          ? 'bg-gradient-to-r from-[#c4b998] to-[#a89870] text-[#111113] hover:shadow-lg hover:shadow-[#c4b998]/10'
+                          : 'bg-white/[0.04] text-white/20 cursor-not-allowed border border-white/[0.06]'
+                      }`}
+                    >
+                      {gmailAdding ? (
+                        <><Loader2 size={14} className="animate-spin" /> Adding...</>
+                      ) : (
+                        <><Plus size={14} /> Add {selectedCount} to Schedule</>
+                      )}
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* ── Settings Panel ───────────────────────────────────────── */}
       {showScheduler && (
@@ -296,6 +627,7 @@ const Planner: React.FC<PlannerProps> = ({ tasks, schedule, agents, currentUser,
         ) : (
           selectedDayEvents.map((event, idx) => {
             const isStudy = event.type === 'study';
+            const isDeadline = event.type === 'deadline';
             const agent = isStudy ? agents.find(a => a.id === event.agent_id) : null;
             const subtopic = agent ? agent.roadmap.flatMap(m => m.subtopics).find(s => s.id === event.subtopic_id) : null;
             const isCompleted = subtopic?.is_completed ?? false;
@@ -307,7 +639,7 @@ const Planner: React.FC<PlannerProps> = ({ tasks, schedule, agents, currentUser,
               <div
                 key={event.id}
                 className={`figma-glass p-6 md:p-7 flex items-start gap-5 transition-all duration-200 ${
-                  isCompleted ? 'border-[#8baa6e]/15' : isStudy ? 'hover:bg-white/[0.06]' : 'border-[#c97070]/15'
+                  isCompleted ? 'border-[#8baa6e]/15' : isDeadline ? 'border-[#ea4335]/15 bg-[#ea4335]/[0.02]' : isStudy ? 'hover:bg-white/[0.06]' : 'border-[#c97070]/15'
                 }`}
                 style={{ animationDelay: `${idx * 40}ms` }}
               >
@@ -323,7 +655,7 @@ const Planner: React.FC<PlannerProps> = ({ tasks, schedule, agents, currentUser,
 
                 {/* Accent bar */}
                 <div className={`w-1 self-stretch rounded-full flex-shrink-0 ${
-                  isCompleted ? 'bg-[#8baa6e]' : isStudy ? 'bg-[#c4b998]' : 'bg-[#c97070]'
+                  isCompleted ? 'bg-[#8baa6e]' : isDeadline ? 'bg-[#ea4335]' : isStudy ? 'bg-[#c4b998]' : 'bg-[#c97070]'
                 }`} />
 
                 {/* Content */}
@@ -331,16 +663,20 @@ const Planner: React.FC<PlannerProps> = ({ tasks, schedule, agents, currentUser,
                   {agent && (
                     <p className="text-xs font-medium text-white/30 mb-1.5">{agent.subject}</p>
                   )}
+                  {isDeadline && (
+                    <p className="text-xs font-medium text-[#ea4335]/60 mb-1.5">📧 Email Deadline</p>
+                  )}
                   <h4 className="text-base font-semibold text-[#e8e4dc] leading-snug">
                     {event.title.split(': ').length > 1 ? event.title.split(': ')[1] : event.title}
                   </h4>
                   <div className="flex items-center gap-2.5 mt-3">
                     <span className={`text-[10px] font-medium px-2.5 py-1 rounded-lg ${
                       isCompleted ? 'bg-[#8baa6e]/10 text-[#8baa6e] border border-[#8baa6e]/15'
+                      : isDeadline ? 'bg-[#ea4335]/10 text-[#ea4335] border border-[#ea4335]/15'
                       : isStudy ? 'bg-white/[0.04] text-white/40 border border-white/[0.06]'
                       : 'bg-[#c97070]/10 text-[#c97070] border border-[#c97070]/15'
                     }`}>
-                      {isCompleted ? 'Done' : event.type}
+                      {isCompleted ? 'Done' : isDeadline ? 'deadline' : event.type}
                     </span>
                     {typeof subtopic?.quiz_score === 'number' && (
                       <span className={`text-[10px] font-semibold px-2.5 py-1 rounded-lg ${
@@ -382,7 +718,12 @@ const Planner: React.FC<PlannerProps> = ({ tasks, schedule, agents, currentUser,
                 <div key={task.id} className="figma-glass p-5 md:p-6 flex items-center justify-between">
                   <div className="pr-4 min-w-0">
                     <p className="text-base font-semibold text-[#e8e4dc] truncate">{task.title}</p>
-                    <p className="text-xs text-white/25 mt-1">{new Date(task.deadline).toLocaleDateString([], { month: 'short', day: 'numeric' })}</p>
+                    <div className="flex items-center gap-2 mt-1">
+                      <p className="text-xs text-white/25">{new Date(task.deadline).toLocaleDateString([], { month: 'short', day: 'numeric' })}</p>
+                      {task.source === 'Email' && (
+                        <span className="text-[9px] font-medium px-1.5 py-0.5 rounded bg-[#ea4335]/10 text-[#ea4335]/70 border border-[#ea4335]/10">📧 Gmail</span>
+                      )}
+                    </div>
                   </div>
                   <span className={`text-[10px] font-medium px-3 py-1.5 rounded-lg shrink-0 ${
                     task.priority === 'high' ? 'bg-[#c97070]/10 text-[#c97070] border border-[#c97070]/15' : 'bg-white/[0.04] text-white/40 border border-white/[0.06]'

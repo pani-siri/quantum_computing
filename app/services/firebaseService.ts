@@ -92,5 +92,10 @@ export const firebaseService = {
   async saveReminderPrefs(uid: string, prefs: { enabled?: boolean; minutesBefore?: number }): Promise<{ enabled: boolean; minutesBefore: number }> {
     const res = await post<{ ok: boolean; prefs: { enabled: boolean; minutesBefore: number } }>("/api/data/reminder-prefs", { uid, prefs });
     return res.prefs;
+  },
+
+  async extractGmailDeadlines(): Promise<{ title: string; deadline: string; priority: 'high' | 'medium' | 'low'; source: string; from: string; emailDate: string; extractedDateStr: string }[]> {
+    const res = await api<{ ok: boolean; deadlines: any[] }>("/api/data/gmail-deadlines");
+    return res.deadlines || [];
   }
 };
